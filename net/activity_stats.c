@@ -15,6 +15,10 @@
  */
 
 #include <linux/proc_fs.h>
+<<<<<<< HEAD
+=======
+#include <linux/seq_file.h>
+>>>>>>> common/android-3.10.y
 #include <linux/suspend.h>
 #include <net/net_namespace.h>
 
@@ -59,6 +63,7 @@ void activity_stats_update(void)
 	spin_unlock_irqrestore(&activity_lock, flags);
 }
 
+<<<<<<< HEAD
 static int activity_stats_read_proc(char *page, char **start, off_t off,
 					int count, int *eof, void *data)
 {
@@ -82,6 +87,22 @@ static int activity_stats_read_proc(char *page, char **start, off_t off,
 	*eof = 1;
 
 	return p - page;
+=======
+static int activity_stats_show(struct seq_file *m, void *v)
+{
+	int i;
+	int ret;
+
+	seq_printf(m, "Min Bucket(sec) Count\n");
+
+	for (i = 0; i < BUCKET_MAX; i++) {
+		ret = seq_printf(m, "%15d %lu\n", 1 << i, activity_stats[i]);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+>>>>>>> common/android-3.10.y
 }
 
 static int activity_stats_notifier(struct notifier_block *nb,
@@ -100,14 +121,34 @@ static int activity_stats_notifier(struct notifier_block *nb,
 	return 0;
 }
 
+<<<<<<< HEAD
+=======
+static int activity_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, activity_stats_show, PDE_DATA(inode));
+}
+
+static const struct file_operations activity_stats_fops = {
+	.open		= activity_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
+
+>>>>>>> common/android-3.10.y
 static struct notifier_block activity_stats_notifier_block = {
 	.notifier_call = activity_stats_notifier,
 };
 
 static int  __init activity_stats_init(void)
 {
+<<<<<<< HEAD
 	create_proc_read_entry("activity", S_IRUGO,
 			init_net.proc_net_stat, activity_stats_read_proc, NULL);
+=======
+	proc_create("activity", S_IRUGO,
+		    init_net.proc_net_stat, &activity_stats_fops);
+>>>>>>> common/android-3.10.y
 	return register_pm_notifier(&activity_stats_notifier_block);
 }
 

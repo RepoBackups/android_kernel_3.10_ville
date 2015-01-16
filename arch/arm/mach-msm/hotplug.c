@@ -12,7 +12,6 @@
 #include <linux/smp.h>
 #include <linux/cpu.h>
 
-#include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
 #include <asm/vfp.h>
 
@@ -22,7 +21,7 @@
 #include "pm.h"
 #include "spm.h"
 
-extern volatile int pen_release;
+#include "common.h"
 
 static cpumask_t cpu_dying_mask;
 
@@ -30,9 +29,6 @@ static DEFINE_PER_CPU(unsigned int, warm_boot_flag);
 
 static inline void cpu_enter_lowpower(void)
 {
-	/* Just flush the cache. Changing the coherency is not yet
-	 * available on msm. */
-	flush_cache_all();
 }
 
 static inline void cpu_leave_lowpower(void)
@@ -64,6 +60,7 @@ static inline void platform_do_lowpower(unsigned int cpu, int *spurious)
 	}
 }
 
+<<<<<<< HEAD
 int platform_cpu_kill(unsigned int cpu)
 {
 	int ret = 0;
@@ -74,12 +71,14 @@ int platform_cpu_kill(unsigned int cpu)
 	return ret ? 0 : 1;
 }
 
+=======
+>>>>>>> common/android-3.10.y
 /*
  * platform-specific code to shutdown a CPU
  *
  * Called with IRQs disabled
  */
-void platform_cpu_die(unsigned int cpu)
+void __ref msm_cpu_die(unsigned int cpu)
 {
 	int spurious = 0;
 
@@ -100,6 +99,7 @@ void platform_cpu_die(unsigned int cpu)
 	if (spurious)
 		pr_warn("CPU%u: %u spurious wakeup calls\n", cpu, spurious);
 }
+<<<<<<< HEAD
 
 int platform_cpu_disable(unsigned int cpu)
 {
@@ -173,3 +173,5 @@ static int __init init_hotplug(void)
 	return register_hotcpu_notifier(&hotplug_rtb_notifier);
 }
 early_initcall(init_hotplug);
+=======
+>>>>>>> common/android-3.10.y

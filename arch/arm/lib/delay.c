@@ -58,7 +58,11 @@ static void __timer_delay(unsigned long cycles)
 static void __timer_const_udelay(unsigned long xloops)
 {
 	unsigned long long loops = xloops;
+<<<<<<< HEAD
 	loops *= loops_per_jiffy;
+=======
+	loops *= arm_delay_ops.ticks_per_jiffy;
+>>>>>>> common/android-3.10.y
 	__timer_delay(loops >> UDELAY_SHIFT);
 }
 
@@ -73,10 +77,20 @@ void __init register_current_timer_delay(const struct delay_timer *timer)
 		pr_info("Switching to timer-based delay loop\n");
 		delay_timer			= timer;
 		lpj_fine			= timer->freq / HZ;
+<<<<<<< HEAD
 		loops_per_jiffy			= lpj_fine;
 		arm_delay_ops.delay		= __timer_delay;
 		arm_delay_ops.const_udelay	= __timer_const_udelay;
 		arm_delay_ops.udelay		= __timer_udelay;
+=======
+
+		/* cpufreq may scale loops_per_jiffy, so keep a private copy */
+		arm_delay_ops.ticks_per_jiffy	= lpj_fine;
+		arm_delay_ops.delay		= __timer_delay;
+		arm_delay_ops.const_udelay	= __timer_const_udelay;
+		arm_delay_ops.udelay		= __timer_udelay;
+
+>>>>>>> common/android-3.10.y
 		delay_calibrated		= true;
 	} else {
 		pr_info("Ignoring duplicate/late registration of read_current_timer delay\n");

@@ -16,6 +16,9 @@
 
 #include <linux/types.h>
 
+/* For key_map array */
+#define MXT_NUM_GPIO		4
+
 /* Orient */
 #define MXT_NORMAL		0x0
 #define MXT_DIAGONAL		0x1
@@ -66,6 +69,7 @@ struct mxt_platform_data {
 	u32 disp_maxy;
 
 	unsigned long irqflags;
+<<<<<<< HEAD
 	bool	i2c_pull_up;
 	bool	digital_pwr_regulator;
 	int reset_gpio;
@@ -77,6 +81,10 @@ struct mxt_platform_data {
 	u8(*read_chg) (void);
 	int (*init_hw) (bool);
 	int (*power_on) (bool);
+=======
+	bool is_tp;
+	const unsigned int key_map[MXT_NUM_GPIO];
+>>>>>>> common/android-3.10.y
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */

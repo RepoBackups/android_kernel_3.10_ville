@@ -80,6 +80,7 @@ struct platform_device msm_ebi1_thermal = {
 	.resource       = msm_ebi1_thermal_resources
 };
 
+<<<<<<< HEAD
 static struct resource resources_adsp[] = {
 {
 	.start  = INT_ADSP_A9_A11,
@@ -106,6 +107,39 @@ static struct resource resources_uart1[] = {
 		.end	= MSM7X30_UART1_PHYS + MSM7X30_UART1_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+=======
+#include <linux/platform_data/mmc-msm_sdcc.h>
+
+static struct resource msm_gpio_resources[] = {
+	{
+		.start	= 32 + 18,
+		.end	= 32 + 18,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= 32 + 19,
+		.end	= 32 + 19,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= 0xac001000,
+		.end	= 0xac001000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+		.name  = "gpio1"
+	},
+	{
+		.start	= 0xac101400,
+		.end	= 0xac101400 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+		.name  = "gpio2"
+	},
+};
+
+struct platform_device msm_device_gpio_7x30 = {
+	.name	= "gpio-msm-7x30",
+	.num_resources	= ARRAY_SIZE(msm_gpio_resources),
+	.resource	= msm_gpio_resources,
+>>>>>>> common/android-3.10.y
 };
 
 static struct resource resources_uart2[] = {

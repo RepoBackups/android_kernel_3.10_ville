@@ -31,8 +31,10 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/efi.h>
+#include <linux/efi-bgrt.h>
 #include <linux/export.h>
 #include <linux/bootmem.h>
+#include <linux/slab.h>
 #include <linux/memblock.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
@@ -47,6 +49,7 @@
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
 #include <asm/x86_init.h>
+#include <asm/rtc.h>
 
 #define EFI_DEBUG	1
 
@@ -75,11 +78,14 @@ struct efi_memory_map memmap;
 static struct efi efi_phys __initdata;
 static efi_system_table_t efi_systab __initdata;
 
+<<<<<<< HEAD
 static inline bool efi_is_native(void)
 {
 	return IS_ENABLED(CONFIG_X86_64) == efi_enabled(EFI_64BIT);
 }
 
+=======
+>>>>>>> common/android-3.10.y
 unsigned long x86_efi_facility;
 
 /*
@@ -91,7 +97,11 @@ int efi_enabled(int facility)
 }
 EXPORT_SYMBOL(efi_enabled);
 
+<<<<<<< HEAD
 static bool disable_runtime = false;
+=======
+static bool __initdata disable_runtime = false;
+>>>>>>> common/android-3.10.y
 static int __init setup_noefi(char *arg)
 {
 	disable_runtime = true;
@@ -278,10 +288,10 @@ static efi_status_t __init phys_efi_get_time(efi_time_t *tm,
 
 int efi_set_rtc_mmss(unsigned long nowtime)
 {
-	int real_seconds, real_minutes;
 	efi_status_t 	status;
 	efi_time_t 	eft;
 	efi_time_cap_t 	cap;
+	struct rtc_time	tm;
 
 	status = efi.get_time(&eft, &cap);
 	if (status != EFI_SUCCESS) {
@@ -289,13 +299,20 @@ int efi_set_rtc_mmss(unsigned long nowtime)
 		return -1;
 	}
 
-	real_seconds = nowtime % 60;
-	real_minutes = nowtime / 60;
-	if (((abs(real_minutes - eft.minute) + 15)/30) & 1)
-		real_minutes += 30;
-	real_minutes %= 60;
-	eft.minute = real_minutes;
-	eft.second = real_seconds;
+	rtc_time_to_tm(nowtime, &tm);
+	if (!rtc_valid_tm(&tm)) {
+		eft.year = tm.tm_year + 1900;
+		eft.month = tm.tm_mon + 1;
+		eft.day = tm.tm_mday;
+		eft.minute = tm.tm_min;
+		eft.second = tm.tm_sec;
+		eft.nanosecond = 0;
+	} else {
+		printk(KERN_ERR
+		       "%s: Invalid EFI RTC value: write of %lx to EFI RTC failed\n",
+		       __FUNCTION__, nowtime);
+		return -1;
+	}
 
 	status = efi.set_time(&eft);
 	if (status != EFI_SUCCESS) {
@@ -371,24 +388,25 @@ static void __init do_add_efi_memmap(void)
 
 int __init efi_memblock_x86_reserve_range(void)
 {
+	struct efi_info *e = &boot_params.efi_info;
 	unsigned long pmap;
 
 #ifdef CONFIG_X86_32
 	/* Can't handle data above 4GB at this time */
-	if (boot_params.efi_info.efi_memmap_hi) {
+	if (e->efi_memmap_hi) {
 		pr_err("Memory map is above 4GB, disabling EFI.\n");
 		return -EINVAL;
 	}
-	pmap = boot_params.efi_info.efi_memmap;
+	pmap =  e->efi_memmap;
 #else
-	pmap = (boot_params.efi_info.efi_memmap |
-		((__u64)boot_params.efi_info.efi_memmap_hi<<32));
+	pmap = (e->efi_memmap |	((__u64)e->efi_memmap_hi << 32));
 #endif
-	memmap.phys_map = (void *)pmap;
-	memmap.nr_map = boot_params.efi_info.efi_memmap_size /
-		boot_params.efi_info.efi_memdesc_size;
-	memmap.desc_version = boot_params.efi_info.efi_memdesc_version;
-	memmap.desc_size = boot_params.efi_info.efi_memdesc_size;
+	memmap.phys_map		= (void *)pmap;
+	memmap.nr_map		= e->efi_memmap_size /
+				  e->efi_memdesc_size;
+	memmap.desc_size	= e->efi_memdesc_size;
+	memmap.desc_version	= e->efi_memdesc_version;
+
 	memblock_reserve(pmap, memmap.nr_map * memmap.desc_size);
 
 	return 0;
@@ -432,8 +450,8 @@ void __init efi_reserve_boot_services(void)
 		 * - Not within any part of the kernel
 		 * - Not the bios reserved area
 		*/
-		if ((start+size >= virt_to_phys(_text)
-				&& start <= virt_to_phys(_end)) ||
+		if ((start + size > __pa_symbol(_text)
+				&& start <= __pa_symbol(_end)) ||
 			!e820_all_mapped(start, start+size, E820_RAM) ||
 			memblock_is_region_reserved(start, size)) {
 			/* Could not reserve, skip it */
@@ -765,6 +783,11 @@ void __init efi_init(void)
 #endif
 }
 
+void __init efi_late_init(void)
+{
+	efi_bgrt_init();
+}
+
 void __init efi_set_executable(efi_memory_desc_t *md, bool executable)
 {
 	u64 addr, npages;
@@ -797,6 +820,44 @@ static void __init runtime_code_page_mkexec(void)
 }
 
 /*
+ * We can't ioremap data in EFI boot services RAM, because we've already mapped
+ * it as RAM.  So, look it up in the existing EFI memory map instead.  Only
+ * callable after efi_enter_virtual_mode and before efi_free_boot_services.
+ */
+void __iomem *efi_lookup_mapped_addr(u64 phys_addr)
+{
+	void *p;
+	if (WARN_ON(!memmap.map))
+		return NULL;
+	for (p = memmap.map; p < memmap.map_end; p += memmap.desc_size) {
+		efi_memory_desc_t *md = p;
+		u64 size = md->num_pages << EFI_PAGE_SHIFT;
+		u64 end = md->phys_addr + size;
+		if (!(md->attribute & EFI_MEMORY_RUNTIME) &&
+		    md->type != EFI_BOOT_SERVICES_CODE &&
+		    md->type != EFI_BOOT_SERVICES_DATA)
+			continue;
+		if (!md->virt_addr)
+			continue;
+		if (phys_addr >= md->phys_addr && phys_addr < end) {
+			phys_addr += md->virt_addr - md->phys_addr;
+			return (__force void __iomem *)(unsigned long)phys_addr;
+		}
+	}
+	return NULL;
+}
+
+void efi_memory_uc(u64 addr, unsigned long size)
+{
+	unsigned long page_shift = 1UL << EFI_PAGE_SHIFT;
+	u64 npages;
+
+	npages = round_up(size, page_shift) / page_shift;
+	memrange_efi_to_native(&addr, &npages);
+	set_memory_uc(addr, npages);
+}
+
+/*
  * This function will switch the EFI runtime services to virtual mode.
  * Essentially, look through the EFI memmap and map every region that
  * has the runtime attribute bit set in its memory descriptor and update
@@ -809,7 +870,7 @@ void __init efi_enter_virtual_mode(void)
 	efi_memory_desc_t *md, *prev_md = NULL;
 	efi_status_t status;
 	unsigned long size;
-	u64 end, systab, addr, npages, end_pfn;
+	u64 end, systab, start_pfn, end_pfn;
 	void *p, *va, *new_memmap = NULL;
 	int count = 0;
 
@@ -865,13 +926,16 @@ void __init efi_enter_virtual_mode(void)
 		size = md->num_pages << EFI_PAGE_SHIFT;
 		end = md->phys_addr + size;
 
+		start_pfn = PFN_DOWN(md->phys_addr);
 		end_pfn = PFN_UP(end);
-		if (end_pfn <= max_low_pfn_mapped
-		    || (end_pfn > (1UL << (32 - PAGE_SHIFT))
-			&& end_pfn <= max_pfn_mapped))
+		if (pfn_range_is_mapped(start_pfn, end_pfn)) {
 			va = __va(md->phys_addr);
-		else
-			va = efi_ioremap(md->phys_addr, size, md->type);
+
+			if (!(md->attribute & EFI_MEMORY_WB))
+				efi_memory_uc((u64)(unsigned long)va, size);
+		} else
+			va = efi_ioremap(md->phys_addr, size,
+					 md->type, md->attribute);
 
 		md->virt_addr = (u64) (unsigned long) va;
 
@@ -879,13 +943,6 @@ void __init efi_enter_virtual_mode(void)
 			pr_err("ioremap of 0x%llX failed!\n",
 			       (unsigned long long)md->phys_addr);
 			continue;
-		}
-
-		if (!(md->attribute & EFI_MEMORY_WB)) {
-			addr = md->virt_addr;
-			npages = md->num_pages;
-			memrange_efi_to_native(&addr, &npages);
-			set_memory_uc(addr, npages);
 		}
 
 		systab = (u64) (unsigned long) efi_phys.systab;
@@ -955,6 +1012,9 @@ u32 efi_mem_type(unsigned long phys_addr)
 {
 	efi_memory_desc_t *md;
 	void *p;
+
+	if (!efi_enabled(EFI_MEMMAP))
+		return 0;
 
 	for (p = memmap.map; p < memmap.map_end; p += memmap.desc_size) {
 		md = p;

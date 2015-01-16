@@ -3,6 +3,7 @@
  *
  * Copyright (C) 1999 Paul `Rusty' Russell & Michael J. Neuling
  * Copyright (C) 2000-2005 Netfilter Core Team <coreteam@netfilter.org>
+ * Copyright (c) 2006-2010 Patrick McHardy <kaber@trash.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -133,7 +134,7 @@ ip6_packet_match(const struct sk_buff *skb,
 		int protohdr;
 		unsigned short _frag_off;
 
-		protohdr = ipv6_find_hdr(skb, protoff, -1, &_frag_off);
+		protohdr = ipv6_find_hdr(skb, protoff, -1, &_frag_off, NULL);
 		if (protohdr < 0) {
 			if (_frag_off == 0)
 				*hotdrop = true;
@@ -181,8 +182,7 @@ ip6_checkentry(const struct ip6t_ip6 *ipv6)
 static unsigned int
 ip6t_error(struct sk_buff *skb, const struct xt_action_param *par)
 {
-	if (net_ratelimit())
-		pr_info("error: `%s'\n", (const char *)par->targinfo);
+	net_info_ratelimited("error: `%s'\n", (const char *)par->targinfo);
 
 	return NF_DROP;
 }
@@ -208,8 +208,7 @@ ip6t_get_target_c(const struct ip6t_entry *e)
 	return ip6t_get_target((struct ip6t_entry *)e);
 }
 
-#if defined(CONFIG_NETFILTER_XT_TARGET_TRACE) || \
-    defined(CONFIG_NETFILTER_XT_TARGET_TRACE_MODULE)
+#if IS_ENABLED(CONFIG_NETFILTER_XT_TARGET_TRACE)
 /* This cries for unification! */
 static const char *const hooknames[] = {
 	[NF_INET_PRE_ROUTING]		= "PREROUTING",
@@ -286,6 +285,7 @@ static void trace_packet(const struct sk_buff *skb,
 	const char *hookname, *chainname, *comment;
 	const struct ip6t_entry *iter;
 	unsigned int rulenum = 0;
+	struct net *net = dev_net(in ? in : out);
 
 	table_base = private->entries[smp_processor_id()];
 	root = get_entry(table_base, private->hook_entry[hook]);
@@ -298,7 +298,7 @@ static void trace_packet(const struct sk_buff *skb,
 		    &chainname, &comment, &rulenum) != 0)
 			break;
 
-	nf_log_packet(AF_INET6, hook, skb, in, out, &trace_loginfo,
+	nf_log_packet(net, AF_INET6, hook, skb, in, out, &trace_loginfo,
 		      "TRACE: %s:%s:%s:%u ",
 		      tablename, chainname, comment, rulenum);
 }
@@ -367,6 +367,7 @@ ip6t_do_table(struct sk_buff *skb,
 		const struct xt_entry_match *ematch;
 
 		IP_NF_ASSERT(e);
+		acpar.thoff = 0;
 		if (!ip6_packet_match(skb, indev, outdev, &e->ipv6,
 		    &acpar.thoff, &acpar.fragoff, &acpar.hotdrop)) {
  no_match:
@@ -386,8 +387,7 @@ ip6t_do_table(struct sk_buff *skb,
 		t = ip6t_get_target_c(e);
 		IP_NF_ASSERT(t->u.kernel.target);
 
-#if defined(CONFIG_NETFILTER_XT_TARGET_TRACE) || \
-    defined(CONFIG_NETFILTER_XT_TARGET_TRACE_MODULE)
+#if IS_ENABLED(CONFIG_NETFILTER_XT_TARGET_TRACE)
 		/* The packet is traced: log it */
 		if (unlikely(skb->nf_trace))
 			trace_packet(skb, hook, in, out,
@@ -401,7 +401,7 @@ ip6t_do_table(struct sk_buff *skb,
 			if (v < 0) {
 				/* Pop from stack? */
 				if (v != XT_RETURN) {
-					verdict = (unsigned)(-v) - 1;
+					verdict = (unsigned int)(-v) - 1;
 					break;
 				}
 				if (*stackptr <= origptr)
@@ -1105,7 +1105,7 @@ static int get_info(struct net *net, void __user *user,
 #endif
 	t = try_then_request_module(xt_find_table_lock(net, AF_INET6, name),
 				    "ip6table_%s", name);
-	if (t && !IS_ERR(t)) {
+	if (!IS_ERR_OR_NULL(t)) {
 		struct ip6t_getinfo info;
 		const struct xt_table_info *private = t->private;
 #ifdef CONFIG_COMPAT
@@ -1164,7 +1164,7 @@ get_entries(struct net *net, struct ip6t_get_entries __user *uptr,
 	}
 
 	t = xt_find_table_lock(net, AF_INET6, get.name);
-	if (t && !IS_ERR(t)) {
+	if (!IS_ERR_OR_NULL(t)) {
 		struct xt_table_info *private = t->private;
 		duprintf("t->private->number = %u\n", private->number);
 		if (get.size == private->size)
@@ -1204,7 +1204,7 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 
 	t = try_then_request_module(xt_find_table_lock(net, AF_INET6, name),
 				    "ip6table_%s", name);
-	if (!t || IS_ERR(t)) {
+	if (IS_ERR_OR_NULL(t)) {
 		ret = t ? PTR_ERR(t) : -ENOENT;
 		goto free_newinfo_counters_untrans;
 	}
@@ -1364,7 +1364,7 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len,
 	}
 
 	t = xt_find_table_lock(net, AF_INET6, name);
-	if (!t || IS_ERR(t)) {
+	if (IS_ERR_OR_NULL(t)) {
 		ret = t ? PTR_ERR(t) : -ENOENT;
 		goto free;
 	}
@@ -1863,7 +1863,7 @@ compat_do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user,
 {
 	int ret;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
 		return -EPERM;
 
 	switch (cmd) {
@@ -1948,7 +1948,7 @@ compat_get_entries(struct net *net, struct compat_ip6t_get_entries __user *uptr,
 
 	xt_compat_lock(AF_INET6);
 	t = xt_find_table_lock(net, AF_INET6, get.name);
-	if (t && !IS_ERR(t)) {
+	if (!IS_ERR_OR_NULL(t)) {
 		const struct xt_table_info *private = t->private;
 		struct xt_table_info info;
 		duprintf("t->private->number = %u\n", private->number);
@@ -1978,7 +1978,7 @@ compat_do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
 {
 	int ret;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
 		return -EPERM;
 
 	switch (cmd) {
@@ -2000,7 +2000,7 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
 {
 	int ret;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
 		return -EPERM;
 
 	switch (cmd) {
@@ -2025,7 +2025,7 @@ do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
 {
 	int ret;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
 		return -EPERM;
 
 	switch (cmd) {
@@ -2280,6 +2280,7 @@ static void __exit ip6_tables_fini(void)
 	unregister_pernet_subsys(&ip6_tables_net_ops);
 }
 
+<<<<<<< HEAD
 /*
  * find the offset to specified header or the protocol number of last header
  * if target < 0. "last header" is transport protocol header, ESP, or
@@ -2359,10 +2360,11 @@ int ipv6_find_hdr(const struct sk_buff *skb, unsigned int *offset,
 	return nexthdr;
 }
 
+=======
+>>>>>>> common/android-3.10.y
 EXPORT_SYMBOL(ip6t_register_table);
 EXPORT_SYMBOL(ip6t_unregister_table);
 EXPORT_SYMBOL(ip6t_do_table);
-EXPORT_SYMBOL(ipv6_find_hdr);
 
 module_init(ip6_tables_init);
 module_exit(ip6_tables_fini);

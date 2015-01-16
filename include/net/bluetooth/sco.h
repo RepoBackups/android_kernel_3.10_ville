@@ -39,7 +39,10 @@ struct sockaddr_sco {
 	sa_family_t	sco_family;
 	bdaddr_t	sco_bdaddr;
 	__u16		sco_pkt_type;
+<<<<<<< HEAD
 	__s8		is_wbs;
+=======
+>>>>>>> common/android-3.10.y
 };
 
 /* SCO socket options */

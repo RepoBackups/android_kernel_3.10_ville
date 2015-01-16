@@ -21,9 +21,45 @@
 #include <linux/interrupt.h>
 #include <linux/fb.h>
 #include <linux/msm_mdp.h>
+<<<<<<< HEAD
 #include <linux/file.h>
 #include <linux/android_pmem.h>
 #include <linux/major.h>
+=======
+#include <linux/platform_data/video-msm_fb.h>
+
+#include "mdp_hw.h"
+#include "mdp_scale_tables.h"
+
+#define DLOG(x...) do {} while (0)
+
+#define MDP_DOWNSCALE_BLUR (MDP_DOWNSCALE_MAX + 1)
+static int downscale_y_table = MDP_DOWNSCALE_MAX;
+static int downscale_x_table = MDP_DOWNSCALE_MAX;
+
+struct mdp_regs {
+	uint32_t src0;
+	uint32_t src1;
+	uint32_t dst0;
+	uint32_t dst1;
+	uint32_t src_cfg;
+	uint32_t dst_cfg;
+	uint32_t src_pack;
+	uint32_t dst_pack;
+	uint32_t src_rect;
+	uint32_t dst_rect;
+	uint32_t src_ystride;
+	uint32_t dst_ystride;
+	uint32_t op;
+	uint32_t src_bpp;
+	uint32_t dst_bpp;
+	uint32_t edge;
+	uint32_t phasex_init;
+	uint32_t phasey_init;
+	uint32_t phasex_step;
+	uint32_t phasey_step;
+};
+>>>>>>> common/android-3.10.y
 
 #include "linux/proc_fs.h"
 

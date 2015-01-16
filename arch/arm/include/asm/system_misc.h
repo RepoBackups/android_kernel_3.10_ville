@@ -21,10 +21,13 @@ extern void (*arm_pm_idle)(void);
 
 extern unsigned int user_debug;
 
+<<<<<<< HEAD
 extern void disable_hlt(void);
 extern void enable_hlt(void);
 extern int get_hlt(void);
 
+=======
+>>>>>>> common/android-3.10.y
 #endif /* !__ASSEMBLY__ */
 
 #endif /* __ASM_ARM_SYSTEM_MISC_H */

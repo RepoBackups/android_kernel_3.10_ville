@@ -8,6 +8,7 @@ if SWITCH
 
 config SWITCH_GPIO
 	tristate "GPIO Swith support"
+<<<<<<< HEAD
 	depends on GENERIC_GPIO
 	help
 	  Say Y here to enable GPIO based switch support.
@@ -17,4 +18,10 @@ config SWITCH_FSA8008
 	help
 	 Say Y here to enable FSA8008 driver
 
+=======
+	depends on GPIOLIB
+	help
+	  Say Y here to enable GPIO based switch support.
+
+>>>>>>> common/android-3.10.y
 endif # SWITCH

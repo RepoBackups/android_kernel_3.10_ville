@@ -30,15 +30,30 @@
 
 #include <mach/board.h>
 
+<<<<<<< HEAD
 #define MSM_CHIP_DEVICE(name, chip) { \
 		.virtual = (unsigned long) MSM_##name##_BASE, \
 		.pfn = __phys_to_pfn(chip##_##name##_PHYS), \
 		.length = chip##_##name##_SIZE, \
 		.type = MT_DEVICE, \
+=======
+#include "common.h"
+
+#define MSM_CHIP_DEVICE_TYPE(name, chip, mem_type) {			      \
+		.virtual = (unsigned long) MSM_##name##_BASE, \
+		.pfn = __phys_to_pfn(chip##_##name##_PHYS), \
+		.length = chip##_##name##_SIZE, \
+		.type = mem_type, \
+>>>>>>> common/android-3.10.y
 	 }
 
+#define MSM_DEVICE_TYPE(name, mem_type) \
+		MSM_CHIP_DEVICE_TYPE(name, MSM, mem_type)
+#define MSM_CHIP_DEVICE(name, chip) \
+		MSM_CHIP_DEVICE_TYPE(name, chip, MT_DEVICE)
 #define MSM_DEVICE(name) MSM_CHIP_DEVICE(name, MSM)
 
+<<<<<<< HEAD
 /* msm_shared_ram_phys default value of 0x00100000 is the most common value
  * and should work as-is for any target without stacked memory.
  */
@@ -78,6 +93,19 @@ static struct map_desc msm_io_desc[] __initdata = {
 		.length =   MSM7XXX_L2CC_SIZE,
 		.type =     MT_DEVICE,
 	},
+=======
+#if defined(CONFIG_ARCH_MSM7X00A)
+static struct map_desc msm_io_desc[] __initdata = {
+	MSM_DEVICE_TYPE(VIC, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(CSR, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_DEVICE_TYPE(DMOV, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(GPIO1, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_CHIP_DEVICE_TYPE(GPIO2, MSM7X00, MT_DEVICE_NONSHARED),
+	MSM_DEVICE_TYPE(CLK_CTL, MT_DEVICE_NONSHARED),
+#if defined(CONFIG_DEBUG_MSM_UART1) || defined(CONFIG_DEBUG_MSM_UART2) || \
+	defined(CONFIG_DEBUG_MSM_UART3)
+	MSM_DEVICE_TYPE(DEBUG_UART, MT_DEVICE_NONSHARED),
+>>>>>>> common/android-3.10.y
 #endif
 	{
 		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
@@ -134,6 +162,7 @@ void __init msm_map_qsd8x50_io(void)
 
 #ifdef CONFIG_ARCH_MSM8X60
 static struct map_desc msm8x60_io_desc[] __initdata = {
+<<<<<<< HEAD
 	MSM_DEVICE(QGIC_DIST),
 	MSM_DEVICE(QGIC_CPU),
 	MSM_DEVICE(TMR),
@@ -154,6 +183,12 @@ static struct map_desc msm8x60_io_desc[] __initdata = {
 	MSM_DEVICE(TCSR),
 	MSM_DEVICE(IMEM),
 	MSM_DEVICE(HDMI),
+=======
+	MSM_CHIP_DEVICE(QGIC_DIST, MSM8X60),
+	MSM_CHIP_DEVICE(QGIC_CPU, MSM8X60),
+	MSM_CHIP_DEVICE(TMR, MSM8X60),
+	MSM_CHIP_DEVICE(TMR0, MSM8X60),
+>>>>>>> common/android-3.10.y
 #ifdef CONFIG_DEBUG_MSM8660_UART
 	MSM_DEVICE(DEBUG_UART),
 #endif
@@ -478,7 +513,12 @@ static struct map_desc msm9625_io_desc[] __initdata = {
 #endif
 };
 
+<<<<<<< HEAD
 void __init msm_map_msm9625_io(void)
+=======
+void __iomem *__msm_ioremap_caller(phys_addr_t phys_addr, size_t size,
+				   unsigned int mtype, void *caller)
+>>>>>>> common/android-3.10.y
 {
 	msm_shared_ram_phys = MSM9625_SHARED_RAM_PHYS;
 	msm_map_io(msm9625_io_desc, ARRAY_SIZE(msm9625_io_desc));

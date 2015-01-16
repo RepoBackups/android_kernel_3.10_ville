@@ -43,6 +43,7 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Creative SB Audigy 2 NX */
 	{ USB_DEVICE(0x041e, 0x3020), .driver_info = USB_QUIRK_RESET_RESUME },
 
+<<<<<<< HEAD
 	/* Microsoft LifeCam-VX700 v2.0 */
 	{ USB_DEVICE(0x045e, 0x0770), .driver_info = USB_QUIRK_RESET_RESUME },
 
@@ -61,6 +62,33 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Logitech Quickcam OEM Dell Notebook */
 	{ USB_DEVICE(0x046d, 0x08c6), .driver_info = USB_QUIRK_RESET_RESUME },
 
+=======
+	/* Microsoft Wireless Laser Mouse 6000 Receiver */
+	{ USB_DEVICE(0x045e, 0x00e1), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Microsoft LifeCam-VX700 v2.0 */
+	{ USB_DEVICE(0x045e, 0x0770), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Logitech HD Pro Webcams C920 and C930e */
+	{ USB_DEVICE(0x046d, 0x082d), .driver_info = USB_QUIRK_DELAY_INIT },
+	{ USB_DEVICE(0x046d, 0x0843), .driver_info = USB_QUIRK_DELAY_INIT },
+
+	/* Logitech Quickcam Fusion */
+	{ USB_DEVICE(0x046d, 0x08c1), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Logitech Quickcam Orbit MP */
+	{ USB_DEVICE(0x046d, 0x08c2), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Logitech Quickcam Pro for Notebook */
+	{ USB_DEVICE(0x046d, 0x08c3), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Logitech Quickcam Pro 5000 */
+	{ USB_DEVICE(0x046d, 0x08c5), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* Logitech Quickcam OEM Dell Notebook */
+	{ USB_DEVICE(0x046d, 0x08c6), .driver_info = USB_QUIRK_RESET_RESUME },
+
+>>>>>>> common/android-3.10.y
 	/* Logitech Quickcam OEM Cisco VT Camera II */
 	{ USB_DEVICE(0x046d, 0x08c7), .driver_info = USB_QUIRK_RESET_RESUME },
 
@@ -161,11 +189,19 @@ static const struct usb_device_id usb_interface_quirk_list[] = {
 	{ USB_VENDOR_AND_INTERFACE_INFO(0x046d, USB_CLASS_VIDEO, 1, 0),
 	  .driver_info = USB_QUIRK_RESET_RESUME },
 
+<<<<<<< HEAD
+=======
+	/* ASUS Base Station(T100) */
+	{ USB_DEVICE(0x0b05, 0x17e0), .driver_info =
+			USB_QUIRK_IGNORE_REMOTE_WAKEUP },
+
+>>>>>>> common/android-3.10.y
 	{ }  /* terminating entry must be last */
 };
 
 static bool usb_match_any_interface(struct usb_device *udev,
 				    const struct usb_device_id *id)
+<<<<<<< HEAD
 {
 	unsigned int i;
 
@@ -206,6 +242,48 @@ static u32 __usb_detect_quirks(struct usb_device *udev,
 		quirks |= (u32)(id->driver_info);
 	}
 
+=======
+{
+	unsigned int i;
+
+	for (i = 0; i < udev->descriptor.bNumConfigurations; ++i) {
+		struct usb_host_config *cfg = &udev->config[i];
+		unsigned int j;
+
+		for (j = 0; j < cfg->desc.bNumInterfaces; ++j) {
+			struct usb_interface_cache *cache;
+			struct usb_host_interface *intf;
+
+			cache = cfg->intf_cache[j];
+			if (cache->num_altsetting == 0)
+				continue;
+
+			intf = &cache->altsetting[0];
+			if (usb_match_one_id_intf(udev, intf, id))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+static u32 __usb_detect_quirks(struct usb_device *udev,
+			       const struct usb_device_id *id)
+{
+	u32 quirks = 0;
+
+	for (; id->match_flags; id++) {
+		if (!usb_match_device(udev, id))
+			continue;
+
+		if ((id->match_flags & USB_DEVICE_ID_MATCH_INT_INFO) &&
+		    !usb_match_any_interface(udev, id))
+			continue;
+
+		quirks |= (u32)(id->driver_info);
+	}
+
+>>>>>>> common/android-3.10.y
 	return quirks;
 }
 
@@ -219,20 +297,27 @@ void usb_detect_quirks(struct usb_device *udev)
 		dev_dbg(&udev->dev, "USB quirks for this device: %x\n",
 			udev->quirks);
 
-	/* For the present, all devices default to USB-PERSIST enabled */
-#if 0		/* was: #ifdef CONFIG_PM */
+#ifdef CONFIG_USB_DEFAULT_PERSIST
+	if (!(udev->quirks & USB_QUIRK_RESET))
+		udev->persist_enabled = 1;
+#else
 	/* Hubs are automatically enabled for USB-PERSIST */
 	if (udev->descriptor.bDeviceClass == USB_CLASS_HUB)
 		udev->persist_enabled = 1;
+#endif	/* CONFIG_USB_DEFAULT_PERSIST */
+}
 
-#else
-	/* In the absence of PM, we can safely enable USB-PERSIST
-	 * for all devices.  It will affect things like hub resets
-	 * and EMF-related port disables.
-	 */
-	if (!(udev->quirks & USB_QUIRK_RESET_MORPHS))
-		udev->persist_enabled = 1;
-#endif	/* CONFIG_PM */
+void usb_detect_interface_quirks(struct usb_device *udev)
+{
+	u32 quirks;
+
+	quirks = __usb_detect_quirks(udev, usb_interface_quirk_list);
+	if (quirks == 0)
+		return;
+
+	dev_dbg(&udev->dev, "USB interface quirks for this device: %x\n",
+		quirks);
+	udev->quirks |= quirks;
 }
 
 void usb_detect_interface_quirks(struct usb_device *udev)

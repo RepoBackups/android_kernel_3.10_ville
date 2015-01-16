@@ -17,746 +17,305 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- *  The parts for function graph printing was taken and modified from the
- *  Linux Kernel that were written by Frederic Weisbecker.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 
 #include "../perf.h"
 #include "util.h"
 #include "trace-event.h"
 
-int header_page_ts_offset;
-int header_page_ts_size;
-int header_page_size_offset;
 int header_page_size_size;
-int header_page_overwrite_offset;
-int header_page_overwrite_size;
+int header_page_ts_size;
 int header_page_data_offset;
-int header_page_data_size;
 
 bool latency_format;
 
-static char *input_buf;
-static unsigned long long input_buf_ptr;
-static unsigned long long input_buf_siz;
-
-static int cpus;
-static int long_size;
-static int is_flag_field;
-static int is_symbolic_field;
-
-static struct format_field *
-find_any_field(struct event *event, const char *name);
-
-static void init_input_buf(char *buf, unsigned long long size)
+struct pevent *read_trace_init(int file_bigendian, int host_bigendian)
 {
-	input_buf = buf;
-	input_buf_siz = size;
-	input_buf_ptr = 0;
-}
+	struct pevent *pevent = pevent_alloc();
 
-struct cmdline {
-	char *comm;
-	int pid;
-};
-
-static struct cmdline *cmdlines;
-static int cmdline_count;
-
-static int cmdline_cmp(const void *a, const void *b)
-{
-	const struct cmdline *ca = a;
-	const struct cmdline *cb = b;
-
-	if (ca->pid < cb->pid)
-		return -1;
-	if (ca->pid > cb->pid)
-		return 1;
-
-	return 0;
-}
-
-void parse_cmdlines(char *file, int size __unused)
-{
-	struct cmdline_list {
-		struct cmdline_list	*next;
-		char			*comm;
-		int			pid;
-	} *list = NULL, *item;
-	char *line;
-	char *next = NULL;
-	int i;
-
-	line = strtok_r(file, "\n", &next);
-	while (line) {
-		item = malloc_or_die(sizeof(*item));
-		sscanf(line, "%d %as", &item->pid,
-		       (float *)(void *)&item->comm); /* workaround gcc warning */
-		item->next = list;
-		list = item;
-		line = strtok_r(NULL, "\n", &next);
-		cmdline_count++;
+	if (pevent != NULL) {
+		pevent_set_flag(pevent, PEVENT_NSEC_OUTPUT);
+		pevent_set_file_bigendian(pevent, file_bigendian);
+		pevent_set_host_bigendian(pevent, host_bigendian);
 	}
 
-	cmdlines = malloc_or_die(sizeof(*cmdlines) * cmdline_count);
+	return pevent;
+}
 
-	i = 0;
-	while (list) {
-		cmdlines[i].pid = list->pid;
-		cmdlines[i].comm = list->comm;
-		i++;
-		item = list;
-		list = list->next;
-		free(item);
+static int get_common_field(struct scripting_context *context,
+			    int *offset, int *size, const char *type)
+{
+	struct pevent *pevent = context->pevent;
+	struct event_format *event;
+	struct format_field *field;
+
+	if (!*size) {
+		if (!pevent->events)
+			return 0;
+
+		event = pevent->events[0];
+		field = pevent_find_common_field(event, type);
+		if (!field)
+			return 0;
+		*offset = field->offset;
+		*size = field->size;
 	}
 
-	qsort(cmdlines, cmdline_count, sizeof(*cmdlines), cmdline_cmp);
+	return pevent_read_number(pevent, context->event_data + *offset, *size);
 }
 
-static struct func_map {
-	unsigned long long		addr;
-	char				*func;
-	char				*mod;
-} *func_list;
-static unsigned int func_count;
-
-static int func_cmp(const void *a, const void *b)
+int common_lock_depth(struct scripting_context *context)
 {
-	const struct func_map *fa = a;
-	const struct func_map *fb = b;
-
-	if (fa->addr < fb->addr)
-		return -1;
-	if (fa->addr > fb->addr)
-		return 1;
-
-	return 0;
-}
-
-void parse_proc_kallsyms(char *file, unsigned int size __unused)
-{
-	struct func_list {
-		struct func_list	*next;
-		unsigned long long	addr;
-		char			*func;
-		char			*mod;
-	} *list = NULL, *item;
-	char *line;
-	char *next = NULL;
-	char *addr_str;
-	char ch;
-	int ret __used;
-	int i;
-
-	line = strtok_r(file, "\n", &next);
-	while (line) {
-		item = malloc_or_die(sizeof(*item));
-		item->mod = NULL;
-		ret = sscanf(line, "%as %c %as\t[%as",
-			     (float *)(void *)&addr_str, /* workaround gcc warning */
-			     &ch,
-			     (float *)(void *)&item->func,
-			     (float *)(void *)&item->mod);
-		item->addr = strtoull(addr_str, NULL, 16);
-		free(addr_str);
-
-		/* truncate the extra ']' */
-		if (item->mod)
-			item->mod[strlen(item->mod) - 1] = 0;
-
-
-		item->next = list;
-		list = item;
-		line = strtok_r(NULL, "\n", &next);
-		func_count++;
-	}
-
-	func_list = malloc_or_die(sizeof(*func_list) * (func_count + 1));
-
-	i = 0;
-	while (list) {
-		func_list[i].func = list->func;
-		func_list[i].addr = list->addr;
-		func_list[i].mod = list->mod;
-		i++;
-		item = list;
-		list = list->next;
-		free(item);
-	}
-
-	qsort(func_list, func_count, sizeof(*func_list), func_cmp);
-
-	/*
-	 * Add a special record at the end.
-	 */
-	func_list[func_count].func = NULL;
-	func_list[func_count].addr = 0;
-	func_list[func_count].mod = NULL;
-}
-
-/*
- * We are searching for a record in between, not an exact
- * match.
- */
-static int func_bcmp(const void *a, const void *b)
-{
-	const struct func_map *fa = a;
-	const struct func_map *fb = b;
-
-	if ((fa->addr == fb->addr) ||
-
-	    (fa->addr > fb->addr &&
-	     fa->addr < (fb+1)->addr))
-		return 0;
-
-	if (fa->addr < fb->addr)
-		return -1;
-
-	return 1;
-}
-
-static struct func_map *find_func(unsigned long long addr)
-{
-	struct func_map *func;
-	struct func_map key;
-
-	key.addr = addr;
-
-	func = bsearch(&key, func_list, func_count, sizeof(*func_list),
-		       func_bcmp);
-
-	return func;
-}
-
-void print_funcs(void)
-{
-	int i;
-
-	for (i = 0; i < (int)func_count; i++) {
-		printf("%016llx %s",
-		       func_list[i].addr,
-		       func_list[i].func);
-		if (func_list[i].mod)
-			printf(" [%s]\n", func_list[i].mod);
-		else
-			printf("\n");
-	}
-}
-
-static struct printk_map {
-	unsigned long long		addr;
-	char				*printk;
-} *printk_list;
-static unsigned int printk_count;
-
-static int printk_cmp(const void *a, const void *b)
-{
-	const struct func_map *fa = a;
-	const struct func_map *fb = b;
-
-	if (fa->addr < fb->addr)
-		return -1;
-	if (fa->addr > fb->addr)
-		return 1;
-
-	return 0;
-}
-
-static struct printk_map *find_printk(unsigned long long addr)
-{
-	struct printk_map *printk;
-	struct printk_map key;
-
-	key.addr = addr;
-
-	printk = bsearch(&key, printk_list, printk_count, sizeof(*printk_list),
-			 printk_cmp);
-
-	return printk;
-}
-
-void parse_ftrace_printk(char *file, unsigned int size __unused)
-{
-	struct printk_list {
-		struct printk_list	*next;
-		unsigned long long	addr;
-		char			*printk;
-	} *list = NULL, *item;
-	char *line;
-	char *next = NULL;
-	char *addr_str;
-	int i;
-
-	line = strtok_r(file, "\n", &next);
-	while (line) {
-		addr_str = strsep(&line, ":");
-		if (!line) {
-			warning("error parsing print strings");
-			break;
-		}
-		item = malloc_or_die(sizeof(*item));
-		item->addr = strtoull(addr_str, NULL, 16);
-		/* fmt still has a space, skip it */
-		item->printk = strdup(line+1);
-		item->next = list;
-		list = item;
-		line = strtok_r(NULL, "\n", &next);
-		printk_count++;
-	}
-
-	printk_list = malloc_or_die(sizeof(*printk_list) * printk_count + 1);
-
-	i = 0;
-	while (list) {
-		printk_list[i].printk = list->printk;
-		printk_list[i].addr = list->addr;
-		i++;
-		item = list;
-		list = list->next;
-		free(item);
-	}
-
-	qsort(printk_list, printk_count, sizeof(*printk_list), printk_cmp);
-}
-
-void print_printk(void)
-{
-	int i;
-
-	for (i = 0; i < (int)printk_count; i++) {
-		printf("%016llx %s\n",
-		       printk_list[i].addr,
-		       printk_list[i].printk);
-	}
-}
-
-static struct event *alloc_event(void)
-{
-	struct event *event;
-
-	event = malloc_or_die(sizeof(*event));
-	memset(event, 0, sizeof(*event));
-
-	return event;
-}
-
-enum event_type {
-	EVENT_ERROR,
-	EVENT_NONE,
-	EVENT_SPACE,
-	EVENT_NEWLINE,
-	EVENT_OP,
-	EVENT_DELIM,
-	EVENT_ITEM,
-	EVENT_DQUOTE,
-	EVENT_SQUOTE,
-};
-
-static struct event *event_list;
-
-static void add_event(struct event *event)
-{
-	event->next = event_list;
-	event_list = event;
-}
-
-static int event_item_type(enum event_type type)
-{
-	switch (type) {
-	case EVENT_ITEM ... EVENT_SQUOTE:
-		return 1;
-	case EVENT_ERROR ... EVENT_DELIM:
-	default:
-		return 0;
-	}
-}
-
-static void free_arg(struct print_arg *arg)
-{
-	if (!arg)
-		return;
-
-	switch (arg->type) {
-	case PRINT_ATOM:
-		if (arg->atom.atom)
-			free(arg->atom.atom);
-		break;
-	case PRINT_NULL:
-	case PRINT_FIELD ... PRINT_OP:
-	default:
-		/* todo */
-		break;
-	}
-
-	free(arg);
-}
-
-static enum event_type get_type(int ch)
-{
-	if (ch == '\n')
-		return EVENT_NEWLINE;
-	if (isspace(ch))
-		return EVENT_SPACE;
-	if (isalnum(ch) || ch == '_')
-		return EVENT_ITEM;
-	if (ch == '\'')
-		return EVENT_SQUOTE;
-	if (ch == '"')
-		return EVENT_DQUOTE;
-	if (!isprint(ch))
-		return EVENT_NONE;
-	if (ch == '(' || ch == ')' || ch == ',')
-		return EVENT_DELIM;
-
-	return EVENT_OP;
-}
-
-static int __read_char(void)
-{
-	if (input_buf_ptr >= input_buf_siz)
-		return -1;
-
-	return input_buf[input_buf_ptr++];
-}
-
-static int __peek_char(void)
-{
-	if (input_buf_ptr >= input_buf_siz)
-		return -1;
-
-	return input_buf[input_buf_ptr];
-}
-
-static enum event_type __read_token(char **tok)
-{
-	char buf[BUFSIZ];
-	int ch, last_ch, quote_ch, next_ch;
-	int i = 0;
-	int tok_size = 0;
-	enum event_type type;
-
-	*tok = NULL;
-
-
-	ch = __read_char();
-	if (ch < 0)
-		return EVENT_NONE;
-
-	type = get_type(ch);
-	if (type == EVENT_NONE)
-		return type;
-
-	buf[i++] = ch;
-
-	switch (type) {
-	case EVENT_NEWLINE:
-	case EVENT_DELIM:
-		*tok = malloc_or_die(2);
-		(*tok)[0] = ch;
-		(*tok)[1] = 0;
-		return type;
-
-	case EVENT_OP:
-		switch (ch) {
-		case '-':
-			next_ch = __peek_char();
-			if (next_ch == '>') {
-				buf[i++] = __read_char();
-				break;
-			}
-			/* fall through */
-		case '+':
-		case '|':
-		case '&':
-		case '>':
-		case '<':
-			last_ch = ch;
-			ch = __peek_char();
-			if (ch != last_ch)
-				goto test_equal;
-			buf[i++] = __read_char();
-			switch (last_ch) {
-			case '>':
-			case '<':
-				goto test_equal;
-			default:
-				break;
-			}
-			break;
-		case '!':
-		case '=':
-			goto test_equal;
-		default: /* what should we do instead? */
-			break;
-		}
-		buf[i] = 0;
-		*tok = strdup(buf);
-		return type;
-
- test_equal:
-		ch = __peek_char();
-		if (ch == '=')
-			buf[i++] = __read_char();
-		break;
-
-	case EVENT_DQUOTE:
-	case EVENT_SQUOTE:
-		/* don't keep quotes */
-		i--;
-		quote_ch = ch;
-		last_ch = 0;
-		do {
-			if (i == (BUFSIZ - 1)) {
-				buf[i] = 0;
-				if (*tok) {
-					*tok = realloc(*tok, tok_size + BUFSIZ);
-					if (!*tok)
-						return EVENT_NONE;
-					strcat(*tok, buf);
-				} else
-					*tok = strdup(buf);
-
-				if (!*tok)
-					return EVENT_NONE;
-				tok_size += BUFSIZ;
-				i = 0;
-			}
-			last_ch = ch;
-			ch = __read_char();
-			buf[i++] = ch;
-			/* the '\' '\' will cancel itself */
-			if (ch == '\\' && last_ch == '\\')
-				last_ch = 0;
-		} while (ch != quote_ch || last_ch == '\\');
-		/* remove the last quote */
-		i--;
-		goto out;
-
-	case EVENT_ERROR ... EVENT_SPACE:
-	case EVENT_ITEM:
-	default:
-		break;
-	}
-
-	while (get_type(__peek_char()) == type) {
-		if (i == (BUFSIZ - 1)) {
-			buf[i] = 0;
-			if (*tok) {
-				*tok = realloc(*tok, tok_size + BUFSIZ);
-				if (!*tok)
-					return EVENT_NONE;
-				strcat(*tok, buf);
-			} else
-				*tok = strdup(buf);
-
-			if (!*tok)
-				return EVENT_NONE;
-			tok_size += BUFSIZ;
-			i = 0;
-		}
-		ch = __read_char();
-		buf[i++] = ch;
-	}
-
- out:
-	buf[i] = 0;
-	if (*tok) {
-		*tok = realloc(*tok, tok_size + i);
-		if (!*tok)
-			return EVENT_NONE;
-		strcat(*tok, buf);
-	} else
-		*tok = strdup(buf);
-	if (!*tok)
-		return EVENT_NONE;
-
-	return type;
-}
-
-static void free_token(char *tok)
-{
-	if (tok)
-		free(tok);
-}
-
-static enum event_type read_token(char **tok)
-{
-	enum event_type type;
-
-	for (;;) {
-		type = __read_token(tok);
-		if (type != EVENT_SPACE)
-			return type;
-
-		free_token(*tok);
-	}
-
-	/* not reached */
-	return EVENT_NONE;
-}
-
-/* no newline */
-static enum event_type read_token_item(char **tok)
-{
-	enum event_type type;
-
-	for (;;) {
-		type = __read_token(tok);
-		if (type != EVENT_SPACE && type != EVENT_NEWLINE)
-			return type;
-
-		free_token(*tok);
-	}
-
-	/* not reached */
-	return EVENT_NONE;
-}
-
-static int test_type(enum event_type type, enum event_type expect)
-{
-	if (type != expect) {
-		warning("Error: expected type %d but read %d",
-		    expect, type);
-		return -1;
-	}
-	return 0;
-}
-
-static int __test_type_token(enum event_type type, char *token,
-			     enum event_type expect, const char *expect_tok,
-			     bool warn)
-{
-	if (type != expect) {
-		if (warn)
-			warning("Error: expected type %d but read %d",
-				expect, type);
-		return -1;
-	}
-
-	if (strcmp(token, expect_tok) != 0) {
-		if (warn)
-			warning("Error: expected '%s' but read '%s'",
-				expect_tok, token);
-		return -1;
-	}
-	return 0;
-}
-
-static int test_type_token(enum event_type type, char *token,
-			   enum event_type expect, const char *expect_tok)
-{
-	return __test_type_token(type, token, expect, expect_tok, true);
-}
-
-static int __read_expect_type(enum event_type expect, char **tok, int newline_ok)
-{
-	enum event_type type;
-
-	if (newline_ok)
-		type = read_token(tok);
-	else
-		type = read_token_item(tok);
-	return test_type(type, expect);
-}
-
-static int read_expect_type(enum event_type expect, char **tok)
-{
-	return __read_expect_type(expect, tok, 1);
-}
-
-static int __read_expected(enum event_type expect, const char *str,
-			   int newline_ok, bool warn)
-{
-	enum event_type type;
-	char *token;
+	static int offset;
+	static int size;
 	int ret;
 
-	if (newline_ok)
-		type = read_token(&token);
-	else
-		type = read_token_item(&token);
-
-	ret = __test_type_token(type, token, expect, str, warn);
-
-	free_token(token);
+	ret = get_common_field(context, &size, &offset,
+			       "common_lock_depth");
+	if (ret < 0)
+		return -1;
 
 	return ret;
 }
 
-static int read_expected(enum event_type expect, const char *str)
+int common_flags(struct scripting_context *context)
 {
-	return __read_expected(expect, str, 1, true);
+	static int offset;
+	static int size;
+	int ret;
+
+	ret = get_common_field(context, &size, &offset,
+			       "common_flags");
+	if (ret < 0)
+		return -1;
+
+	return ret;
 }
 
-static int read_expected_item(enum event_type expect, const char *str)
+int common_pc(struct scripting_context *context)
 {
-	return __read_expected(expect, str, 0, true);
+	static int offset;
+	static int size;
+	int ret;
+
+	ret = get_common_field(context, &size, &offset,
+			       "common_preempt_count");
+	if (ret < 0)
+		return -1;
+
+	return ret;
 }
 
-static char *event_read_name(void)
+unsigned long long
+raw_field_value(struct event_format *event, const char *name, void *data)
 {
-	char *token;
+	struct format_field *field;
+	unsigned long long val;
 
-	if (read_expected(EVENT_ITEM, "name") < 0)
+	field = pevent_find_any_field(event, name);
+	if (!field)
+		return 0ULL;
+
+	pevent_read_number_field(field, data, &val);
+
+	return val;
+}
+
+void *raw_field_ptr(struct event_format *event, const char *name, void *data)
+{
+	struct format_field *field;
+
+	field = pevent_find_any_field(event, name);
+	if (!field)
 		return NULL;
 
-	if (read_expected(EVENT_OP, ":") < 0)
+	if (field->flags & FIELD_IS_DYNAMIC) {
+		int offset;
+
+		offset = *(int *)(data + field->offset);
+		offset &= 0xffff;
+
+		return data + offset;
+	}
+
+	return data + field->offset;
+}
+
+int trace_parse_common_type(struct pevent *pevent, void *data)
+{
+	struct pevent_record record;
+
+	record.data = data;
+	return pevent_data_type(pevent, &record);
+}
+
+int trace_parse_common_pid(struct pevent *pevent, void *data)
+{
+	struct pevent_record record;
+
+	record.data = data;
+	return pevent_data_pid(pevent, &record);
+}
+
+unsigned long long read_size(struct event_format *event, void *ptr, int size)
+{
+	return pevent_read_number(event->pevent, ptr, size);
+}
+
+void event_format__print(struct event_format *event,
+			 int cpu, void *data, int size)
+{
+	struct pevent_record record;
+	struct trace_seq s;
+
+	memset(&record, 0, sizeof(record));
+	record.cpu = cpu;
+	record.size = size;
+	record.data = data;
+
+	trace_seq_init(&s);
+	pevent_event_info(&s, event, &record);
+	trace_seq_do_printf(&s);
+}
+
+void parse_proc_kallsyms(struct pevent *pevent,
+			 char *file, unsigned int size __maybe_unused)
+{
+	unsigned long long addr;
+	char *func;
+	char *line;
+	char *next = NULL;
+	char *addr_str;
+	char *mod;
+	char *fmt;
+
+	line = strtok_r(file, "\n", &next);
+	while (line) {
+		mod = NULL;
+		addr_str = strtok_r(line, " ", &fmt);
+		addr = strtoull(addr_str, NULL, 16);
+		/* skip character */
+		strtok_r(NULL, " ", &fmt);
+		func = strtok_r(NULL, "\t", &fmt);
+		mod = strtok_r(NULL, "]", &fmt);
+		/* truncate the extra '[' */
+		if (mod)
+			mod = mod + 1;
+
+		pevent_register_function(pevent, func, addr, mod);
+
+		line = strtok_r(NULL, "\n", &next);
+	}
+}
+
+void parse_ftrace_printk(struct pevent *pevent,
+			 char *file, unsigned int size __maybe_unused)
+{
+	unsigned long long addr;
+	char *printk;
+	char *line;
+	char *next = NULL;
+	char *addr_str;
+	char *fmt;
+
+	line = strtok_r(file, "\n", &next);
+	while (line) {
+		addr_str = strtok_r(line, ":", &fmt);
+		if (!addr_str) {
+			warning("printk format with empty entry");
+			break;
+		}
+		addr = strtoull(addr_str, NULL, 16);
+		/* fmt still has a space, skip it */
+		printk = strdup(fmt+1);
+		line = strtok_r(NULL, "\n", &next);
+		pevent_register_print_string(pevent, printk, addr);
+	}
+}
+
+int parse_ftrace_file(struct pevent *pevent, char *buf, unsigned long size)
+{
+	return pevent_parse_event(pevent, buf, size, "ftrace");
+}
+
+int parse_event_file(struct pevent *pevent,
+		     char *buf, unsigned long size, char *sys)
+{
+	return pevent_parse_event(pevent, buf, size, sys);
+}
+
+struct event_format *trace_find_next_event(struct pevent *pevent,
+					   struct event_format *event)
+{
+	static int idx;
+
+	if (!pevent || !pevent->events)
 		return NULL;
 
-	if (read_expect_type(EVENT_ITEM, &token) < 0)
-		goto fail;
+	if (!event) {
+		idx = 0;
+		return pevent->events[0];
+	}
 
-	return token;
+	if (idx < pevent->nr_events && event == pevent->events[idx]) {
+		idx++;
+		if (idx == pevent->nr_events)
+			return NULL;
+		return pevent->events[idx];
+	}
 
- fail:
-	free_token(token);
+	for (idx = 1; idx < pevent->nr_events; idx++) {
+		if (event == pevent->events[idx - 1])
+			return pevent->events[idx];
+	}
 	return NULL;
 }
 
-static int event_read_id(void)
+struct flag {
+	const char *name;
+	unsigned long long value;
+};
+
+static const struct flag flags[] = {
+	{ "HI_SOFTIRQ", 0 },
+	{ "TIMER_SOFTIRQ", 1 },
+	{ "NET_TX_SOFTIRQ", 2 },
+	{ "NET_RX_SOFTIRQ", 3 },
+	{ "BLOCK_SOFTIRQ", 4 },
+	{ "BLOCK_IOPOLL_SOFTIRQ", 5 },
+	{ "TASKLET_SOFTIRQ", 6 },
+	{ "SCHED_SOFTIRQ", 7 },
+	{ "HRTIMER_SOFTIRQ", 8 },
+	{ "RCU_SOFTIRQ", 9 },
+
+	{ "HRTIMER_NORESTART", 0 },
+	{ "HRTIMER_RESTART", 1 },
+};
+
+unsigned long long eval_flag(const char *flag)
 {
-	char *token;
-	int id = -1;
+	int i;
 
-	if (read_expected_item(EVENT_ITEM, "ID") < 0)
-		return -1;
+	/*
+	 * Some flags in the format files do not get converted.
+	 * If the flag is not numeric, see if it is something that
+	 * we already know about.
+	 */
+	if (isdigit(flag[0]))
+		return strtoull(flag, NULL, 0);
 
-	if (read_expected(EVENT_OP, ":") < 0)
-		return -1;
-
-	if (read_expect_type(EVENT_ITEM, &token) < 0)
-		goto free;
-
-	id = strtoul(token, NULL, 0);
-
- free:
-	free_token(token);
-	return id;
-}
-
-static int field_is_string(struct format_field *field)
-{
-	if ((field->flags & FIELD_IS_ARRAY) &&
-	    (!strstr(field->type, "char") || !strstr(field->type, "u8") ||
-	     !strstr(field->type, "s8")))
-		return 1;
+	for (i = 0; i < (int)(sizeof(flags)/sizeof(flags[0])); i++)
+		if (strcmp(flags[i].name, flag) == 0)
+			return flags[i].value;
 
 	return 0;
 }
-
-static int field_is_dynamic(struct format_field *field)
-{
-	if (!strncmp(field->type, "__data_loc", 10))
-		return 1;
-
-	return 0;
-}
+<<<<<<< HEAD
 
 static int event_read_fields(struct event *event, struct format_field **fields)
 {
@@ -3153,3 +2712,5 @@ int common_lock_depth(struct scripting_context *context)
 {
 	return parse_common_lock_depth(context->event_data);
 }
+=======
+>>>>>>> common/android-3.10.y

@@ -71,6 +71,7 @@ void set_pageblock_flags_group(struct page *page, unsigned long flags,
 #ifdef CONFIG_COMPACTION
 #define get_pageblock_skip(page) \
 			get_pageblock_flags_group(page, PB_migrate_skip,     \
+<<<<<<< HEAD
 							PB_migrate_skip + 1)
 #define clear_pageblock_skip(page) \
 			set_pageblock_flags_group(page, 0, PB_migrate_skip,  \
@@ -78,6 +79,15 @@ void set_pageblock_flags_group(struct page *page, unsigned long flags,
 #define set_pageblock_skip(page) \
 			set_pageblock_flags_group(page, 1, PB_migrate_skip,  \
 							PB_migrate_skip + 1)
+=======
+							PB_migrate_skip)
+#define clear_pageblock_skip(page) \
+			set_pageblock_flags_group(page, 0, PB_migrate_skip,  \
+							PB_migrate_skip)
+#define set_pageblock_skip(page) \
+			set_pageblock_flags_group(page, 1, PB_migrate_skip,  \
+							PB_migrate_skip)
+>>>>>>> common/android-3.10.y
 #endif /* CONFIG_COMPACTION */
 
 #define get_pageblock_flags(page) \

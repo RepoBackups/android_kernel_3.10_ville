@@ -116,8 +116,8 @@ static int lookup_chan_dst(u16 call_id, __be32 d_addr)
 	int i;
 
 	rcu_read_lock();
-	for (i = find_next_bit(callid_bitmap, MAX_CALLID, 1); i < MAX_CALLID;
-	     i = find_next_bit(callid_bitmap, MAX_CALLID, i + 1)) {
+	i = 1;
+	for_each_set_bit_from(i, callid_bitmap, MAX_CALLID) {
 		sock = rcu_dereference(callid_sock[i]);
 		if (!sock)
 			continue;
@@ -209,7 +209,7 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
 		}
 		if (skb->sk)
 			skb_set_owner_w(new_skb, skb->sk);
-		kfree_skb(skb);
+		consume_skb(skb);
 		skb = new_skb;
 	}
 
@@ -506,7 +506,9 @@ static int pptp_getname(struct socket *sock, struct sockaddr *uaddr,
 	int len = sizeof(struct sockaddr_pppox);
 	struct sockaddr_pppox sp;
 
-	sp.sa_family	  = AF_PPPOX;
+	memset(&sp.sa_addr, 0, sizeof(sp.sa_addr));
+
+	sp.sa_family    = AF_PPPOX;
 	sp.sa_protocol  = PX_PROTO_PPTP;
 	sp.sa_addr.pptp = pppox_sk(sock->sk)->proto.pptp.src_addr;
 

@@ -118,7 +118,12 @@ static void say_key(int key)
 			synth_printf(" %s", spk_msg_get(MSG_STATES_START + i));
 	}
 	if ((key > 0) && (key <= num_key_names))
+<<<<<<< HEAD
 		synth_printf(" %s\n", spk_msg_get(MSG_KEYNAMES_START + (key - 1)));
+=======
+		synth_printf(" %s\n",
+				spk_msg_get(MSG_KEYNAMES_START + (key - 1)));
+>>>>>>> common/android-3.10.y
 }
 
 static int help_init(void)
@@ -169,7 +174,13 @@ int spk_handle_help(struct vc_data *vc, u_char type, u_char ch, u_short key)
 			cur_item--;
 		else
 			return -1;
+<<<<<<< HEAD
 	} else if (type == KT_SPKUP && ch == SPEAKUP_HELP && !spk_special_handler) {
+=======
+	} else if (type == KT_SPKUP
+			&& ch == SPEAKUP_HELP
+			&& !spk_special_handler) {
+>>>>>>> common/android-3.10.y
 		spk_special_handler = spk_handle_help;
 		synth_printf("%s\n", spk_msg_get(MSG_HELP_INFO));
 		build_key_data(); /* rebuild each time in case new mapping */

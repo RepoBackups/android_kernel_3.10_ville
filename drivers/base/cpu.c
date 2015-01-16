@@ -13,6 +13,7 @@
 #include <linux/gfp.h>
 #include <linux/slab.h>
 #include <linux/percpu.h>
+#include <linux/cpufeature.h>
 
 #include "base.h"
 
@@ -25,6 +26,15 @@ EXPORT_SYMBOL_GPL(cpu_subsys);
 static DEFINE_PER_CPU(struct device *, cpu_sys_devices);
 
 #ifdef CONFIG_HOTPLUG_CPU
+static void change_cpu_under_node(struct cpu *cpu,
+			unsigned int from_nid, unsigned int to_nid)
+{
+	int cpuid = cpu->dev.id;
+	unregister_cpu_under_node(cpuid, from_nid);
+	register_cpu_under_node(cpuid, to_nid);
+	cpu->node_id = to_nid;
+}
+
 static ssize_t show_online(struct device *dev,
 			   struct device_attribute *attr,
 			   char *buf)
@@ -39,17 +49,29 @@ static ssize_t __ref store_online(struct device *dev,
 				  const char *buf, size_t count)
 {
 	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	int cpuid = cpu->dev.id;
+	int from_nid, to_nid;
 	ssize_t ret;
 
 	cpu_hotplug_driver_lock();
 	switch (buf[0]) {
 	case '0':
-		ret = cpu_down(cpu->dev.id);
+		ret = cpu_down(cpuid);
 		if (!ret)
 			kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
 		break;
 	case '1':
-		ret = cpu_up(cpu->dev.id);
+		from_nid = cpu_to_node(cpuid);
+		ret = cpu_up(cpuid);
+
+		/*
+		 * When hot adding memory to memoryless node and enabling a cpu
+		 * on the node, node number of the cpu may internally change.
+		 */
+		to_nid = cpu_to_node(cpuid);
+		if (from_nid != to_nid)
+			change_cpu_under_node(cpu, from_nid, to_nid);
+
 		if (!ret)
 			kobject_uevent(&dev->kobj, KOBJ_ONLINE);
 		break;
@@ -132,6 +154,17 @@ static ssize_t show_crash_notes(struct device *dev, struct device_attribute *att
 	return rc;
 }
 static DEVICE_ATTR(crash_notes, 0400, show_crash_notes, NULL);
+
+static ssize_t show_crash_notes_size(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	ssize_t rc;
+
+	rc = sprintf(buf, "%zu\n", sizeof(note_buf_t));
+	return rc;
+}
+static DEVICE_ATTR(crash_notes_size, 0400, show_crash_notes_size, NULL);
 #endif
 
 /*
@@ -224,9 +257,48 @@ static void cpu_device_release(struct device *dev)
 	 * by the cpu device.
 	 *
 	 * Never copy this way of doing things, or you too will be made fun of
-	 * on the linux-kerenl list, you have been warned.
+	 * on the linux-kernel list, you have been warned.
 	 */
 }
+
+#ifdef CONFIG_HAVE_CPU_AUTOPROBE
+#ifdef CONFIG_GENERIC_CPU_AUTOPROBE
+static ssize_t print_cpu_modalias(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	ssize_t n;
+	u32 i;
+
+	n = sprintf(buf, "cpu:type:" CPU_FEATURE_TYPEFMT ":feature:",
+		    CPU_FEATURE_TYPEVAL);
+
+	for (i = 0; i < MAX_CPU_FEATURES; i++)
+		if (cpu_have_feature(i)) {
+			if (PAGE_SIZE < n + sizeof(",XXXX\n")) {
+				WARN(1, "CPU features overflow page\n");
+				break;
+			}
+			n += sprintf(&buf[n], ",%04X", i);
+		}
+	buf[n++] = '\n';
+	return n;
+}
+#else
+#define print_cpu_modalias	arch_print_cpu_modalias
+#endif
+
+static int cpu_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	char *buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (buf) {
+		print_cpu_modalias(NULL, NULL, buf);
+		add_uevent_var(env, "MODALIAS=%s", buf);
+		kfree(buf);
+	}
+	return 0;
+}
+#endif
 
 /*
  * register_cpu - Setup a sysfs device for a CPU.
@@ -246,7 +318,7 @@ int __cpuinit register_cpu(struct cpu *cpu, int num)
 	cpu->dev.bus = &cpu_subsys;
 	cpu->dev.release = cpu_device_release;
 #ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
-	cpu->dev.bus->uevent = arch_cpu_uevent;
+	cpu->dev.bus->uevent = cpu_uevent;
 #endif
 	error = device_register(&cpu->dev);
 	if (!error && cpu->hotpluggable)
@@ -259,6 +331,9 @@ int __cpuinit register_cpu(struct cpu *cpu, int num)
 #ifdef CONFIG_KEXEC
 	if (!error)
 		error = device_create_file(&cpu->dev, &dev_attr_crash_notes);
+	if (!error)
+		error = device_create_file(&cpu->dev,
+					   &dev_attr_crash_notes_size);
 #endif
 	return error;
 }
@@ -272,8 +347,8 @@ struct device *get_cpu_device(unsigned cpu)
 }
 EXPORT_SYMBOL_GPL(get_cpu_device);
 
-#ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
-static DEVICE_ATTR(modalias, 0444, arch_print_cpu_modalias, NULL);
+#ifdef CONFIG_HAVE_CPU_AUTOPROBE
+static DEVICE_ATTR(modalias, 0444, print_cpu_modalias, NULL);
 #endif
 
 static struct attribute *cpu_root_attrs[] = {
@@ -286,7 +361,7 @@ static struct attribute *cpu_root_attrs[] = {
 	&cpu_attrs[2].attr.attr,
 	&dev_attr_kernel_max.attr,
 	&dev_attr_offline.attr,
-#ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
+#ifdef CONFIG_HAVE_CPU_AUTOPROBE
 	&dev_attr_modalias.attr,
 #endif
 	NULL
@@ -330,8 +405,4 @@ void __init cpu_dev_init(void)
 		panic("Failed to register CPU subsystem");
 
 	cpu_dev_register_generic();
-
-#if defined(CONFIG_SCHED_MC) || defined(CONFIG_SCHED_SMT)
-	sched_create_sysfs_power_savings_entries(cpu_subsys.dev_root);
-#endif
 }

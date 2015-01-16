@@ -38,7 +38,10 @@
 #include <linux/platform_device.h>
 
 #include "core.h"
+<<<<<<< HEAD
 #include "xhci.h"
+=======
+>>>>>>> common/android-3.10.y
 
 int dwc3_host_init(struct dwc3 *dwc)
 {
@@ -46,7 +49,7 @@ int dwc3_host_init(struct dwc3 *dwc)
 	int			ret;
 	struct xhci_plat_data	pdata;
 
-	xhci = platform_device_alloc("xhci-hcd", -1);
+	xhci = platform_device_alloc("xhci-hcd", PLATFORM_DEVID_AUTO);
 	if (!xhci) {
 		dev_err(dwc->dev, "couldn't allocate xHCI device\n");
 		ret = -ENOMEM;
@@ -64,6 +67,7 @@ int dwc3_host_init(struct dwc3 *dwc)
 			__ffs(DWC3_GSNPSID_MASK) & DWC3_GSNPSREV_MASK);
 	pdata.revision = dwc->revision & DWC3_GSNPSREV_MASK;
 
+<<<<<<< HEAD
 	ret = platform_device_add_data(xhci, (const void *) &pdata,
 			sizeof(struct xhci_plat_data));
 	if (ret) {
@@ -71,6 +75,8 @@ int dwc3_host_init(struct dwc3 *dwc)
 		goto err1;
 	}
 
+=======
+>>>>>>> common/android-3.10.y
 	ret = platform_device_add_resources(xhci, dwc->xhci_resources,
 						DWC3_XHCI_RESOURCES_NUM);
 	if (ret) {

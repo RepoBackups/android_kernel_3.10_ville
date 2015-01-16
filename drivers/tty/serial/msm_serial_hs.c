@@ -473,7 +473,7 @@ static void __devinit msm_serial_debugfs_init(struct msm_hs_port *msm_uport,
 							__func__, id);
 }
 
-static int __devexit msm_hs_remove(struct platform_device *pdev)
+static int msm_hs_remove(struct platform_device *pdev)
 {
 
 	struct msm_hs_port *msm_uport;
@@ -1331,7 +1331,12 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	int rx_count;
 	unsigned long status;
 	unsigned long flags;
+<<<<<<< HEAD
 	unsigned int error_f = 0;
+=======
+	unsigned int flush;
+	struct tty_port *port;
+>>>>>>> common/android-3.10.y
 	struct uart_port *uport;
 	struct msm_hs_port *msm_uport;
 	unsigned int flush;
@@ -1344,7 +1349,11 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 
 	status = msm_hs_read(uport, UARTDM_SR_ADDR);
 
+<<<<<<< HEAD
 	spin_lock_irqsave(&uport->lock, flags);
+=======
+	port = &uport->state->port;
+>>>>>>> common/android-3.10.y
 
 	msm_hs_write(uport, UARTDM_CR_ADDR, STALE_EVENT_DISABLE);
 
@@ -1354,9 +1363,13 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	/* overflow is not connect to data in a FIFO */
 	if (unlikely((status & UARTDM_SR_OVERRUN_BMSK) &&
 		     (uport->read_status_mask & CREAD))) {
+<<<<<<< HEAD
 		retval = tty_insert_flip_char(tty, 0, TTY_OVERRUN);
 		if (!retval)
 			msm_uport->rx.buffer_pending |= TTY_OVERRUN;
+=======
+		tty_insert_flip_char(port, 0, TTY_OVERRUN);
+>>>>>>> common/android-3.10.y
 		uport->icount.buf_overrun++;
 		error_f = 1;
 	}
@@ -1370,6 +1383,7 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 			printk(KERN_WARNING "msm_serial_hs: parity error\n");
 		uport->icount.parity++;
 		error_f = 1;
+<<<<<<< HEAD
 		if (!(uport->ignore_status_mask & IGNPAR)) {
 			retval = tty_insert_flip_char(tty, 0, TTY_PARITY);
 			if (!retval)
@@ -1388,6 +1402,10 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 			if (!retval)
 				msm_uport->rx.buffer_pending |= TTY_BREAK;
 		}
+=======
+		if (uport->ignore_status_mask & IGNPAR)
+			tty_insert_flip_char(port, 0, TTY_PARITY);
+>>>>>>> common/android-3.10.y
 	}
 
 	if (error_f)
@@ -1429,7 +1447,7 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	rmb();
 
 	if (0 != (uport->read_status_mask & CREAD)) {
-		retval = tty_insert_flip_string(tty, msm_uport->rx.buffer,
+		retval = tty_insert_flip_string(port, msm_uport->rx.buffer,
 						rx_count);
 		if (retval != rx_count) {
 			msm_uport->rx.buffer_pending |= CHARS_NORMAL |
@@ -1465,6 +1483,7 @@ out:
 /* Enable the transmitter Interrupt */
 static void msm_hs_start_tx_locked(struct uart_port *uport )
 {
+<<<<<<< HEAD
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
 	if (msm_uport->is_shutdown)
@@ -1570,6 +1589,12 @@ static void msm_hs_dmov_rx_callback(struct msm_dmov_cmd *cmd_ptr,
 	msm_uport = container_of(cmd_ptr, struct msm_hs_port, rx.xfer);
 
 	tasklet_schedule(&msm_uport->rx.tlet);
+=======
+	struct msm_hs_port *msm_uport =
+			container_of(work, struct msm_hs_port, rx.tty_work);
+
+	tty_flip_buffer_push(&msm_uport->uport.state->port);
+>>>>>>> common/android-3.10.y
 }
 
 /*
@@ -2067,7 +2092,6 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = (struct msm_hs_port *)dev;
 	struct uart_port *uport = &msm_uport->uport;
-	struct tty_struct *tty = NULL;
 
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_OFF)  {
@@ -2082,6 +2106,7 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	if (wakeup) {
 		/* the uart was clocked off during an rx, wake up and
 		 * optionally inject char into tty rx */
+<<<<<<< HEAD
 		spin_unlock_irqrestore(&uport->lock, flags);
 		msm_hs_request_clock_on(uport);
 		spin_lock_irqsave(&uport->lock, flags);
@@ -2089,6 +2114,12 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 			tty = uport->state->port.tty;
 			tty_insert_flip_char(tty,
 					     msm_uport->wakeup.rx_to_inject,
+=======
+		msm_hs_request_clock_on_locked(uport);
+		if (msm_uport->rx_wakeup.inject_rx) {
+			tty_insert_flip_char(&uport->state->port,
+					     msm_uport->rx_wakeup.rx_to_inject,
+>>>>>>> common/android-3.10.y
 					     TTY_NORMAL);
 		}
 	}
@@ -2130,7 +2161,14 @@ static int msm_hs_startup(struct uart_port *uport)
 	tx->dma_base = dma_map_single(uport->dev, tx_buf->buf, UART_XMIT_SIZE,
 				      DMA_TO_DEVICE);
 
+<<<<<<< HEAD
 	wake_lock(&msm_uport->dma_wake_lock);
+=======
+	/* do not let tty layer execute RX in global workqueue, use a
+	 * dedicated workqueue managed by this driver */
+	uport->state->port.low_latency = 1;
+
+>>>>>>> common/android-3.10.y
 	/* turn on uart clk */
 	ret = msm_hs_init_clk(uport);
 	if (unlikely(ret)) {
@@ -2402,7 +2440,7 @@ free_tx_command_ptr:
 	return ret;
 }
 
-static int __devinit msm_hs_probe(struct platform_device *pdev)
+static int msm_hs_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct uart_port *uport;
@@ -2770,8 +2808,13 @@ static const struct dev_pm_ops msm_hs_dev_pm_ops = {
 };
 
 static struct platform_driver msm_serial_hs_platform_driver = {
+<<<<<<< HEAD
 	.probe	= msm_hs_probe,
 	.remove = __devexit_p(msm_hs_remove),
+=======
+	.probe = msm_hs_probe,
+	.remove = msm_hs_remove,
+>>>>>>> common/android-3.10.y
 	.driver = {
 		.name = "msm_serial_hs",
 		.pm   = &msm_hs_dev_pm_ops,

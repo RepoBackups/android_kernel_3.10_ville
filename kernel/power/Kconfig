@@ -20,6 +20,7 @@ config SUSPEND_FREEZER
 
 config HAS_WAKELOCK
 	bool
+<<<<<<< HEAD
 
 config HAS_EARLYSUSPEND
 	bool
@@ -84,6 +85,13 @@ choice
 		  user-space through sysfs when user-space should stop drawing
 		  to the screen and notifies user-space when it should resume.
 endchoice
+=======
+	default y
+
+config WAKELOCK
+	bool
+	default y
+>>>>>>> common/android-3.10.y
 
 config HIBERNATE_CALLBACKS
 	bool
@@ -170,6 +178,33 @@ config PM_SLEEP_SMP
 	select HOTPLUG
 	select HOTPLUG_CPU
 
+config PM_AUTOSLEEP
+	bool "Opportunistic sleep"
+	depends on PM_SLEEP
+	default n
+	---help---
+	Allow the kernel to trigger a system transition into a global sleep
+	state automatically whenever there are no active wakeup sources.
+
+config PM_WAKELOCKS
+	bool "User space wakeup sources interface"
+	depends on PM_SLEEP
+	default n
+	---help---
+	Allow user space to create, activate and deactivate wakeup source
+	objects with the help of a sysfs-based interface.
+
+config PM_WAKELOCKS_LIMIT
+	int "Maximum number of user space wakeup sources (0 = no limit)"
+	range 0 100000
+	default 100
+	depends on PM_WAKELOCKS
+
+config PM_WAKELOCKS_GC
+	bool "Garbage collector for user space wakeup sources"
+	depends on PM_WAKELOCKS
+	default y
+
 config PM_RUNTIME
 	bool "Run-time PM core functionality"
 	depends on !IA64_HP_SIM
@@ -215,7 +250,7 @@ config PM_TEST_SUSPEND
 	You probably want to have your system's RTC driver statically
 	linked, ensuring that it's available when this test runs.
 
-config CAN_PM_TRACE
+config PM_SLEEP_DEBUG
 	def_bool y
 	depends on PM_DEBUG && PM_SLEEP
 
@@ -236,7 +271,7 @@ config PM_TRACE
 
 config PM_TRACE_RTC
 	bool "Suspend/resume event tracing"
-	depends on CAN_PM_TRACE
+	depends on PM_SLEEP_DEBUG
 	depends on X86
 	select PM_TRACE
 	---help---
@@ -302,6 +337,10 @@ config PM_CLK
 config PM_GENERIC_DOMAINS
 	bool
 	depends on PM
+
+config PM_GENERIC_DOMAINS_SLEEP
+	def_bool y
+	depends on PM_SLEEP && PM_GENERIC_DOMAINS
 
 config PM_GENERIC_DOMAINS_RUNTIME
 	def_bool y

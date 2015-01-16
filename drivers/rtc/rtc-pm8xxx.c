@@ -400,7 +400,7 @@ rtc_alarm_handled:
 	return IRQ_HANDLED;
 }
 
-static int __devinit pm8xxx_rtc_probe(struct platform_device *pdev)
+static int pm8xxx_rtc_probe(struct platform_device *pdev)
 {
 	int rc;
 	u8 ctrl_reg;
@@ -510,7 +510,24 @@ fail_rtc_enable:
 	return rc;
 }
 
+<<<<<<< HEAD
 #ifdef CONFIG_PM
+=======
+static int pm8xxx_rtc_remove(struct platform_device *pdev)
+{
+	struct pm8xxx_rtc *rtc_dd = platform_get_drvdata(pdev);
+
+	device_init_wakeup(&pdev->dev, 0);
+	free_irq(rtc_dd->rtc_alarm_irq, rtc_dd);
+	rtc_device_unregister(rtc_dd->rtc);
+	platform_set_drvdata(pdev, NULL);
+	kfree(rtc_dd);
+
+	return 0;
+}
+
+#ifdef CONFIG_PM_SLEEP
+>>>>>>> common/android-3.10.y
 static int pm8xxx_rtc_resume(struct device *dev)
 {
 	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
@@ -589,8 +606,12 @@ fail_alarm_disable:
 
 static struct platform_driver pm8xxx_rtc_driver = {
 	.probe		= pm8xxx_rtc_probe,
+<<<<<<< HEAD
 	.remove		= __devexit_p(pm8xxx_rtc_remove),
 	.shutdown	= pm8xxx_rtc_shutdown,
+=======
+	.remove		= pm8xxx_rtc_remove,
+>>>>>>> common/android-3.10.y
 	.driver	= {
 		.name	= PM8XXX_RTC_DEV_NAME,
 		.owner	= THIS_MODULE,

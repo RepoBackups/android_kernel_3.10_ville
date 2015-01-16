@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
 obj-y += io.o dma.o memory.o
@@ -38,9 +39,15 @@ obj-$(CONFIG_DEBUG_FS) += perf_debug.o
 ifndef CONFIG_MSM_SMP
 obj-$(CONFIG_ARCH_MSM_SCORPION) += msm_fault_handlers.o
 endif
+=======
+obj-y += io.o timer.o
+obj-y += clock.o
+obj-$(CONFIG_DEBUG_FS) += clock-debug.o
+>>>>>>> common/android-3.10.y
 
 obj-$(CONFIG_MSM_VIC) += irq-vic.o
 
+<<<<<<< HEAD
 ifdef CONFIG_ARCH_QSD8X50
 	obj-$(CONFIG_MSM_SOC_REV_NONE) += acpuclock-8x50.o
 endif
@@ -64,6 +71,11 @@ obj-$(CONFIG_MSM_ETM) += msm-etm.o
 
 quiet_cmd_mkrpcsym = MKCAP   $@
       cmd_mkrpcsym = $(PERL) $(srctree)/$(src)/mkrpcsym.pl $< $@
+=======
+obj-$(CONFIG_ARCH_MSM7X00A) += dma.o irq.o
+obj-$(CONFIG_ARCH_MSM7X30) += dma.o
+obj-$(CONFIG_ARCH_QSD8X50) += dma.o sirc.o
+>>>>>>> common/android-3.10.y
 
 target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
@@ -215,6 +227,7 @@ ifdef CONFIG_CPU_IDLE
 	obj-$(CONFIG_ARCH_MSM8974) += cpuidle.o
 endif
 
+<<<<<<< HEAD
 ifdef CONFIG_MSM_CAMERA_V4L2
 	obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-camera.o
 endif
@@ -222,6 +235,15 @@ obj-$(CONFIG_ARCH_FSM9XXX) += devices-fsm9xxx.o
 obj-$(CONFIG_ARCH_FSM9XXX) += clock-fsm9xxx.o clock-local.o acpuclock-fsm9xxx.o
 obj-$(CONFIG_ARCH_FSM9XXX) += dfe-fsm9xxx.o rfic-fsm9xxx.o
 obj-$(CONFIG_ARCH_FSM9XXX) += restart-fsm9xxx.o xo-fsm9xxx.o
+=======
+obj-$(CONFIG_MACH_TROUT) += board-trout.o board-trout-gpio.o board-trout-mmc.o devices-msm7x00.o
+obj-$(CONFIG_MACH_TROUT) += board-trout.o board-trout-gpio.o board-trout-mmc.o board-trout-panel.o devices-msm7x00.o
+obj-$(CONFIG_MACH_HALIBUT) += board-halibut.o devices-msm7x00.o
+obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o
+obj-$(CONFIG_ARCH_QSD8X50) += board-qsd8x50.o devices-qsd8x50.o
+obj-$(CONFIG_ARCH_MSM8X60) += board-dt-8660.o
+obj-$(CONFIG_ARCH_MSM8960) += board-dt-8960.o
+>>>>>>> common/android-3.10.y
 
 obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog.o
 obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog_asm.o

@@ -108,9 +108,15 @@ xt_socket_get4_sk(const struct sk_buff *skb, struct xt_action_param *par)
 	const struct iphdr *iph = ip_hdr(skb);
 	struct udphdr _hdr, *hp = NULL;
 	struct sock *sk;
+<<<<<<< HEAD
 	__be32 daddr = 0, saddr = 0;
 	__be16 dport = 0, sport = 0;
 	u8 protocol = 0;
+=======
+	__be32 uninitialized_var(daddr), uninitialized_var(saddr);
+	__be16 uninitialized_var(dport), uninitialized_var(sport);
+	u8 uninitialized_var(protocol);
+>>>>>>> common/android-3.10.y
 #ifdef XT_SOCKET_HAVE_CONNTRACK
 	struct nf_conn const *ct;
 	enum ip_conntrack_info ctinfo;
@@ -274,10 +280,15 @@ xt_socket_get6_sk(const struct sk_buff *skb, struct xt_action_param *par)
 	struct udphdr _hdr, *hp = NULL;
 	struct sock *sk;
 	struct in6_addr *daddr = NULL, *saddr = NULL;
+<<<<<<< HEAD
 	__be16 dport = 0, sport = 0;
 	int thoff, tproto;
+=======
+	__be16 uninitialized_var(dport), uninitialized_var(sport);
+	int thoff = 0, uninitialized_var(tproto);
+>>>>>>> common/android-3.10.y
 
-	tproto = ipv6_find_hdr(skb, &thoff, -1, NULL);
+	tproto = ipv6_find_hdr(skb, &thoff, -1, NULL, NULL);
 	if (tproto < 0) {
 		pr_debug("unable to find transport header in IPv6 packet, dropping\n");
 		return NF_DROP;

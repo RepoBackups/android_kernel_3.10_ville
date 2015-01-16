@@ -251,14 +251,14 @@ DEFINE_MUTEX(spk_mutex);
 static int keyboard_notifier_call(struct notifier_block *,
 				  unsigned long code, void *param);
 
-struct notifier_block keyboard_notifier_block = {
+static struct notifier_block keyboard_notifier_block = {
 	.notifier_call = keyboard_notifier_call,
 };
 
 static int vt_notifier_call(struct notifier_block *,
 			    unsigned long code, void *param);
 
-struct notifier_block vt_notifier_block = {
+static struct notifier_block vt_notifier_block = {
 	.notifier_call = vt_notifier_call,
 };
 
@@ -1892,7 +1892,7 @@ oops:
 		spk_special_handler = NULL;
 		return 1;
 	}
-	cp = speakup_s2i(goto_buf, &go_pos);
+	go_pos = simple_strtol(goto_buf, &cp, 10);
 	goto_pos = (u_long) go_pos;
 	if (*cp == 'x') {
 		if (*goto_buf < '0')

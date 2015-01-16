@@ -15,10 +15,14 @@
 #ifndef _MDP_HW_H_
 #define _MDP_HW_H_
 
+<<<<<<< HEAD
 #include <linux/platform_device.h>
 #include <linux/wait.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_fb.h>
+=======
+#include <linux/platform_data/video-msm_fb.h>
+>>>>>>> common/android-3.10.y
 
 typedef void (*mdp_dma_start_func_t)(void *private_data, uint32_t addr,
 				     uint32_t stride, uint32_t width,

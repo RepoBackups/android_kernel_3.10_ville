@@ -24,6 +24,10 @@ extern struct arm_delay_ops {
 	void (*delay)(unsigned long);
 	void (*const_udelay)(unsigned long);
 	void (*udelay)(unsigned long);
+<<<<<<< HEAD
+=======
+	unsigned long ticks_per_jiffy;
+>>>>>>> common/android-3.10.y
 } arm_delay_ops;
 
 #define __delay(n)		arm_delay_ops.delay(n)

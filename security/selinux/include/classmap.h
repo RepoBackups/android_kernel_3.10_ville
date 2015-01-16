@@ -150,7 +150,11 @@ struct security_class_mapping secclass_map[] = {
 	    NULL } },
 	{ "kernel_service", { "use_as_override", "create_files_as", NULL } },
 	{ "tun_socket",
+<<<<<<< HEAD
 	  { COMMON_SOCK_PERMS, NULL } },
+=======
+	  { COMMON_SOCK_PERMS, "attach_queue", NULL } },
+>>>>>>> common/android-3.10.y
 	{ "binder", { "impersonate", "call", "set_context_mgr", "transfer", NULL } },
 	{ NULL }
   };

@@ -18,6 +18,12 @@
 #define VFL_TYPE_SUBDEV		3
 #define VFL_TYPE_MAX		4
 
+/* Is this a receiver, transmitter or mem-to-mem? */
+/* Ignored for VFL_TYPE_SUBDEV. */
+#define VFL_DIR_RX		0
+#define VFL_DIR_TX		1
+#define VFL_DIR_M2M		2
+
 struct v4l2_ioctl_callbacks;
 struct video_device;
 struct v4l2_device;
@@ -75,13 +81,26 @@ struct video_device
 	
 	struct v4l2_ctrl_handler *ctrl_handler;
 
+<<<<<<< HEAD
 	
+=======
+	/* vb2_queue associated with this device node. May be NULL. */
+	struct vb2_queue *queue;
+
+	/* Priority state. If NULL, then v4l2_dev->prio will be used. */
+>>>>>>> common/android-3.10.y
 	struct v4l2_prio_state *prio;
 
 	
 	char name[32];
+<<<<<<< HEAD
 	int vfl_type;
 	
+=======
+	int vfl_type;	/* device type */
+	int vfl_dir;	/* receiver, transmitter or m2m */
+	/* 'minor' is set to -1 if the registration failed */
+>>>>>>> common/android-3.10.y
 	int minor;
 	u16 num;
 	
@@ -104,8 +123,14 @@ struct video_device
 
 	
 	const struct v4l2_ioctl_ops *ioctl_ops;
+	DECLARE_BITMAP(valid_ioctls, BASE_VIDIOC_PRIVATE);
 
+<<<<<<< HEAD
 	
+=======
+	/* serialization lock */
+	DECLARE_BITMAP(disable_locking, BASE_VIDIOC_PRIVATE);
+>>>>>>> common/android-3.10.y
 	struct mutex *lock;
 };
 
@@ -136,6 +161,30 @@ void video_device_release(struct video_device *vdev);
 
 void video_device_release_empty(struct video_device *vdev);
 
+<<<<<<< HEAD
+=======
+/* returns true if cmd is a known V4L2 ioctl */
+bool v4l2_is_known_ioctl(unsigned int cmd);
+
+/* mark that this command shouldn't use core locking */
+static inline void v4l2_disable_ioctl_locking(struct video_device *vdev, unsigned int cmd)
+{
+	if (_IOC_NR(cmd) < BASE_VIDIOC_PRIVATE)
+		set_bit(_IOC_NR(cmd), vdev->disable_locking);
+}
+
+/* Mark that this command isn't implemented. This must be called before
+   video_device_register. See also the comments in determine_valid_ioctls().
+   This function allows drivers to provide just one v4l2_ioctl_ops struct, but
+   disable ioctls based on the specific card that is actually found. */
+static inline void v4l2_disable_ioctl(struct video_device *vdev, unsigned int cmd)
+{
+	if (_IOC_NR(cmd) < BASE_VIDIOC_PRIVATE)
+		set_bit(_IOC_NR(cmd), vdev->valid_ioctls);
+}
+
+/* helper functions to access driver private data. */
+>>>>>>> common/android-3.10.y
 static inline void *video_get_drvdata(struct video_device *vdev)
 {
 	return dev_get_drvdata(&vdev->dev);

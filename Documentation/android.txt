@@ -92,8 +92,13 @@ DNOTIFY
 1.3 Recommended enabled config options
 ------------------------------
 ANDROID_PMEM
+<<<<<<< HEAD
 ANDROID_RAM_CONSOLE
 ANDROID_RAM_CONSOLE_ERROR_CORRECTION
+=======
+PSTORE_CONSOLE
+PSTORE_RAM
+>>>>>>> common/android-3.10.y
 SCHEDSTATS
 DEBUG_PREEMPT
 DEBUG_MUTEXES

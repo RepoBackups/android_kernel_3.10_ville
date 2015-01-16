@@ -7,6 +7,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio_func.h>
+<<<<<<< HEAD
 #include <mach/gpio.h>
 #include <mach/msm_bus.h>
 
@@ -14,6 +15,8 @@
 #define SDC_DAT1_ENABLE  1
 #define SDC_DAT1_ENWAKE  2
 #define SDC_DAT1_DISWAKE 3
+=======
+>>>>>>> common/android-3.10.y
 
 struct embedded_sdio_data {
         struct sdio_cis cis;
@@ -22,6 +25,7 @@ struct embedded_sdio_data {
         int num_funcs;
 };
 
+<<<<<<< HEAD
 /* This structure keeps information per regulator */
 struct msm_mmc_reg_data {
 	/* voltage regulator handle */
@@ -127,6 +131,8 @@ struct msm_mmc_bus_voting_data {
 	unsigned int bw_vecs_size;
 };
 
+=======
+>>>>>>> common/android-3.10.y
 struct mmc_platform_data {
 	unsigned int ocr_mask;			/* available voltages */
 	int built_in;				/* built-in device flag */
@@ -135,6 +141,7 @@ struct mmc_platform_data {
 	unsigned int (*status)(struct device *);
 	struct embedded_sdio_data *embedded_sdio;
 	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id);
+<<<<<<< HEAD
 	/*
 	 * XPC controls the maximum current in the
 	 * default speed mode of SDXC card.
@@ -172,6 +179,8 @@ struct mmc_platform_data {
 	bool disable_cmd23;
 	u32 cpu_dma_latency;
 	struct msm_mmc_bus_voting_data *msm_bus_voting_data;
+=======
+>>>>>>> common/android-3.10.y
 };
 
 #endif

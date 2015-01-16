@@ -366,8 +366,10 @@ struct xhci_op_regs {
  * Timeout can be up to 127us.  0xFF means an infinite timeout.
  */
 #define PORT_U1_TIMEOUT(p)	((p) & 0xff)
+#define PORT_U1_TIMEOUT_MASK	0xff
 /* Inactivity timer value for transitions into U2 */
 #define PORT_U2_TIMEOUT(p)	(((p) & 0xff) << 8)
+#define PORT_U2_TIMEOUT_MASK	(0xff << 8)
 /* Bits 24:31 for port testing */
 
 /* USB2 Protocol PORTSPMSC */
@@ -918,6 +920,8 @@ struct xhci_virt_device {
 	u8				real_port;
 	struct xhci_interval_bw_table	*bw_table;
 	struct xhci_tt_bw_info		*tt_info;
+	/* The current max exit latency for the enabled USB3 link states. */
+	u16				current_mel;
 };
 
 /*
@@ -1234,8 +1238,8 @@ union xhci_trb {
 #define TRBS_PER_SEGMENT	64
 /* Allow two commands + a link TRB, along with any reserved command TRBs */
 #define MAX_RSVD_CMD_TRBS	(TRBS_PER_SEGMENT - 3)
-#define SEGMENT_SIZE		(TRBS_PER_SEGMENT*16)
-#define SEGMENT_SHIFT		(__ffs(SEGMENT_SIZE))
+#define TRB_SEGMENT_SIZE	(TRBS_PER_SEGMENT*16)
+#define TRB_SEGMENT_SHIFT	(ilog2(TRB_SEGMENT_SIZE))
 /* TRB buffer pointers can't cross 64KB boundaries */
 #define TRB_MAX_BUFF_SHIFT		16
 #define TRB_MAX_BUFF_SIZE	(1 << TRB_MAX_BUFF_SHIFT)
@@ -1447,6 +1451,8 @@ struct xhci_hcd {
 	/* slot enabling and address device helpers */
 	struct completion	addr_dev;
 	int slot_id;
+	/* For USB 3.0 LPM enable/disable. */
+	struct xhci_command		*lpm_command;
 	/* Internal mirror of the HW's dcbaa */
 	struct xhci_virt_device	*devs[MAX_HC_SLOTS];
 	/* For keeping track of bandwidth domains per roothub. */
@@ -1505,6 +1511,7 @@ struct xhci_hcd {
 #define	XHCI_SW_BW_CHECKING	(1 << 8)
 #define XHCI_AMD_0x96_HOST	(1 << 9)
 #define XHCI_TRUST_TX_LENGTH	(1 << 10)
+<<<<<<< HEAD
 #define XHCI_SPURIOUS_REBOOT	(1 << 13)
 /*
  * In Synopsis DWC3 controller, PORTSC register access involves multiple clock
@@ -1526,6 +1533,14 @@ struct xhci_hcd {
 #define XHCI_PLAT		(1 << 16)
 #define XHCI_SLOW_SUSPEND	(1 << 17)
 #define XHCI_SPURIOUS_WAKEUP	(1 << 18)
+=======
+#define XHCI_LPM_SUPPORT	(1 << 11)
+#define XHCI_INTEL_HOST		(1 << 12)
+#define XHCI_SPURIOUS_REBOOT	(1 << 13)
+#define XHCI_COMP_MODE_QUIRK	(1 << 14)
+#define XHCI_AVOID_BEI		(1 << 15)
+#define XHCI_PLAT		(1 << 16)
+>>>>>>> common/android-3.10.y
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
 	/* There are two roothubs to keep track of bus suspend info for */
@@ -1574,6 +1589,8 @@ static inline struct usb_hcd *xhci_to_hcd(struct xhci_hcd *xhci)
 	dev_err(xhci_to_hcd(xhci)->self.controller , fmt , ## args)
 #define xhci_warn(xhci, fmt, args...) \
 	dev_warn(xhci_to_hcd(xhci)->self.controller , fmt , ## args)
+#define xhci_warn_ratelimited(xhci, fmt, args...) \
+	dev_warn_ratelimited(xhci_to_hcd(xhci)->self.controller , fmt , ## args)
 
 /* TODO: copied from ehci.h - can be refactored? */
 /* xHCI spec says all registers are little endian */
@@ -1737,7 +1754,11 @@ static inline void xhci_unregister_plat(void)
 
 /* xHCI host controller glue */
 typedef void (*xhci_get_quirks_t)(struct device *, struct xhci_hcd *);
+<<<<<<< HEAD
 int handshake(struct xhci_hcd *xhci, void __iomem *ptr,
+=======
+int xhci_handshake(struct xhci_hcd *xhci, void __iomem *ptr,
+>>>>>>> common/android-3.10.y
 		u32 mask, u32 done, int usec);
 void xhci_quiesce(struct xhci_hcd *xhci);
 int xhci_halt(struct xhci_hcd *xhci);
@@ -1811,7 +1832,7 @@ int xhci_queue_isoc_tx_prepare(struct xhci_hcd *xhci, gfp_t mem_flags,
 int xhci_queue_configure_endpoint(struct xhci_hcd *xhci, dma_addr_t in_ctx_ptr,
 		u32 slot_id, bool command_must_succeed);
 int xhci_queue_evaluate_context(struct xhci_hcd *xhci, dma_addr_t in_ctx_ptr,
-		u32 slot_id);
+		u32 slot_id, bool command_must_succeed);
 int xhci_queue_reset_ep(struct xhci_hcd *xhci, int slot_id,
 		unsigned int ep_index);
 int xhci_queue_reset_device(struct xhci_hcd *xhci, u32 slot_id);
@@ -1838,11 +1859,16 @@ union xhci_trb *xhci_find_next_enqueue(struct xhci_ring *ring);
 /* xHCI roothub code */
 void xhci_set_link_state(struct xhci_hcd *xhci, __le32 __iomem **port_array,
 				int port_id, u32 link_state);
+int xhci_enable_usb3_lpm_timeout(struct usb_hcd *hcd,
+			struct usb_device *udev, enum usb3_link_state state);
+int xhci_disable_usb3_lpm_timeout(struct usb_hcd *hcd,
+			struct usb_device *udev, enum usb3_link_state state);
 void xhci_test_and_clear_bit(struct xhci_hcd *xhci, __le32 __iomem **port_array,
 				int port_id, u32 port_bit);
 int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue, u16 wIndex,
 		char *buf, u16 wLength);
 int xhci_hub_status_data(struct usb_hcd *hcd, char *buf);
+int xhci_find_raw_port_number(struct usb_hcd *hcd, int port1);
 
 #ifdef CONFIG_PM
 int xhci_bus_suspend(struct usb_hcd *hcd);
@@ -1861,5 +1887,8 @@ void xhci_ring_device(struct xhci_hcd *xhci, int slot_id);
 struct xhci_input_control_ctx *xhci_get_input_control_ctx(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
 struct xhci_slot_ctx *xhci_get_slot_ctx(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
 struct xhci_ep_ctx *xhci_get_ep_ctx(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx, unsigned int ep_index);
+
+/* xHCI quirks */
+bool xhci_compliance_mode_recovery_timer_quirk_check(void);
 
 #endif /* __LINUX_XHCI_HCD_H */

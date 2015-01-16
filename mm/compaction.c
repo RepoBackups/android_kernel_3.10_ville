@@ -14,6 +14,8 @@
 #include <linux/backing-dev.h>
 #include <linux/sysctl.h>
 #include <linux/sysfs.h>
+#include <linux/balloon_compaction.h>
+#include <linux/page-isolation.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -84,7 +86,11 @@ static inline bool isolation_suitable(struct compact_control *cc,
 static void __reset_isolation_suitable(struct zone *zone)
 {
 	unsigned long start_pfn = zone->zone_start_pfn;
+<<<<<<< HEAD
 	unsigned long end_pfn = zone->zone_start_pfn + zone->spanned_pages;
+=======
+	unsigned long end_pfn = zone_end_pfn(zone);
+>>>>>>> common/android-3.10.y
 	unsigned long pfn;
 
 	zone->compact_cached_migrate_pfn = start_pfn;
@@ -132,6 +138,13 @@ static void update_pageblock_skip(struct compact_control *cc,
 			bool migrate_scanner)
 {
 	struct zone *zone = cc->zone;
+<<<<<<< HEAD
+=======
+
+	if (cc->ignore_skip_hint)
+		return;
+
+>>>>>>> common/android-3.10.y
 	if (!page)
 		return;
 
@@ -214,7 +227,10 @@ static bool suitable_migration_target(struct page *page)
 	int migratetype = get_pageblock_migratetype(page);
 
 	/* Don't interfere with memory hot-remove or the min_free_kbytes blocks */
-	if (migratetype == MIGRATE_ISOLATE || migratetype == MIGRATE_RESERVE)
+	if (migratetype == MIGRATE_RESERVE)
+		return false;
+
+	if (is_migrate_isolate(migratetype))
 		return false;
 
 	/* If the page is a large free page, then allow migration */
@@ -243,7 +259,10 @@ static unsigned long isolate_freepages_block(struct compact_control *cc,
 {
 	int nr_scanned = 0, total_isolated = 0;
 	struct page *cursor, *valid_page = NULL;
+<<<<<<< HEAD
 	unsigned long nr_strict_required = end_pfn - blockpfn;
+=======
+>>>>>>> common/android-3.10.y
 	unsigned long flags;
 	bool locked = false;
 
@@ -253,6 +272,7 @@ static unsigned long isolate_freepages_block(struct compact_control *cc,
 	for (; blockpfn < end_pfn; blockpfn++, cursor++) {
 		int isolated, i;
 		struct page *page = cursor;
+<<<<<<< HEAD
 
 		nr_scanned++;
 		if (!pfn_valid_within(blockpfn))
@@ -356,6 +376,128 @@ isolate_freepages_range(struct compact_control *cc,
 
 		isolated = isolate_freepages_block(cc, pfn, block_end_pfn,
 						   &freelist, true);
+=======
+
+		nr_scanned++;
+		if (!pfn_valid_within(blockpfn))
+			goto isolate_fail;
+
+		if (!valid_page)
+			valid_page = page;
+		if (!PageBuddy(page))
+			goto isolate_fail;
+
+		/*
+		 * The zone lock must be held to isolate freepages.
+		 * Unfortunately this is a very coarse lock and can be
+		 * heavily contended if there are parallel allocations
+		 * or parallel compactions. For async compaction do not
+		 * spin on the lock and we acquire the lock as late as
+		 * possible.
+		 */
+		locked = compact_checklock_irqsave(&cc->zone->lock, &flags,
+								locked, cc);
+		if (!locked)
+			break;
+
+		/* Recheck this is a suitable migration target under lock */
+		if (!strict && !suitable_migration_target(page))
+			break;
+
+		/* Recheck this is a buddy page under lock */
+		if (!PageBuddy(page))
+			goto isolate_fail;
+
+		/* Found a free page, break it into order-0 pages */
+		isolated = split_free_page(page);
+		total_isolated += isolated;
+		for (i = 0; i < isolated; i++) {
+			list_add(&page->lru, freelist);
+			page++;
+		}
+
+		/* If a page was split, advance to the end of it */
+		if (isolated) {
+			blockpfn += isolated - 1;
+			cursor += isolated - 1;
+			continue;
+		}
+
+isolate_fail:
+		if (strict)
+			break;
+		else
+			continue;
+>>>>>>> common/android-3.10.y
+
+	}
+
+	trace_mm_compaction_isolate_freepages(nr_scanned, total_isolated);
+
+	/*
+	 * If strict isolation is requested by CMA then check that all the
+	 * pages requested were isolated. If there were any failures, 0 is
+	 * returned and CMA will fail.
+	 */
+	if (strict && blockpfn < end_pfn)
+		total_isolated = 0;
+
+	if (locked)
+		spin_unlock_irqrestore(&cc->zone->lock, flags);
+
+	/* Update the pageblock-skip if the whole pageblock was scanned */
+	if (blockpfn == end_pfn)
+		update_pageblock_skip(cc, valid_page, total_isolated, false);
+
+	count_compact_events(COMPACTFREE_SCANNED, nr_scanned);
+	if (total_isolated)
+		count_compact_events(COMPACTISOLATED, total_isolated);
+	return total_isolated;
+}
+
+/**
+ * isolate_freepages_range() - isolate free pages.
+ * @start_pfn: The first PFN to start isolating.
+ * @end_pfn:   The one-past-last PFN.
+ *
+ * Non-free pages, invalid PFNs, or zone boundaries within the
+ * [start_pfn, end_pfn) range are considered errors, cause function to
+ * undo its actions and return zero.
+ *
+ * Otherwise, function returns one-past-the-last PFN of isolated page
+ * (which may be greater then end_pfn if end fell in a middle of
+ * a free page).
+ */
+unsigned long
+isolate_freepages_range(struct compact_control *cc,
+			unsigned long start_pfn, unsigned long end_pfn)
+{
+	unsigned long isolated, pfn, block_end_pfn;
+	LIST_HEAD(freelist);
+
+	for (pfn = start_pfn; pfn < end_pfn; pfn += isolated) {
+		if (!pfn_valid(pfn) || cc->zone != page_zone(pfn_to_page(pfn)))
+			break;
+
+		/*
+<<<<<<< HEAD
+		 * In strict mode, isolate_freepages_block() returns 0 if
+		 * there are any holes in the block (ie. invalid PFNs or
+		 * non-free pages).
+		 */
+		if (!isolated)
+			break;
+
+		/*
+=======
+		 * On subsequent iterations ALIGN() is actually not needed,
+		 * but we keep it that we not to complicate the code.
+		 */
+		block_end_pfn = ALIGN(pfn + 1, pageblock_nr_pages);
+		block_end_pfn = min(block_end_pfn, end_pfn);
+
+		isolated = isolate_freepages_block(cc, pfn, block_end_pfn,
+						   &freelist, true);
 
 		/*
 		 * In strict mode, isolate_freepages_block() returns 0 if
@@ -366,6 +508,7 @@ isolate_freepages_range(struct compact_control *cc,
 			break;
 
 		/*
+>>>>>>> common/android-3.10.y
 		 * If we managed to isolate pages, it is always (1 << n) *
 		 * pageblock_nr_pages for some non-negative n.  (Max order
 		 * page may span two pageblocks).
@@ -447,6 +590,10 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 	unsigned long nr_scanned = 0, nr_isolated = 0;
 	struct list_head *migratelist = &cc->migratepages;
 	isolate_mode_t mode = 0;
+<<<<<<< HEAD
+=======
+	struct lruvec *lruvec;
+>>>>>>> common/android-3.10.y
 	unsigned long flags;
 	bool locked = false;
 	struct page *page = NULL, *valid_page = NULL;
@@ -528,9 +675,29 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 			goto next_pageblock;
 		}
 
+<<<<<<< HEAD
 		/* Check may be lockless but that's ok as we recheck later */
 		if (!PageLRU(page))
+=======
+		/*
+		 * Check may be lockless but that's ok as we recheck later.
+		 * It's possible to migrate LRU pages and balloon pages
+		 * Skip any other type of page
+		 */
+		if (!PageLRU(page)) {
+			if (unlikely(balloon_page_movable(page))) {
+				if (locked && balloon_page_isolate(page)) {
+					/* Successfully isolated */
+					cc->finished_update_migrate = true;
+					list_add(&page->lru, migratelist);
+					cc->nr_migratepages++;
+					nr_isolated++;
+					goto check_compact_cluster;
+				}
+			}
+>>>>>>> common/android-3.10.y
 			continue;
+		}
 
 		/*
 		 * PageLRU is set. lru_lock normally excludes isolation
@@ -569,6 +736,11 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 		if (unevictable)
 			mode |= ISOLATE_UNEVICTABLE;
 
+<<<<<<< HEAD
+=======
+		lruvec = mem_cgroup_page_lruvec(page, zone);
+
+>>>>>>> common/android-3.10.y
 		/* Try isolate the page */
 		if (__isolate_lru_page(page, mode) != 0)
 			continue;
@@ -577,11 +749,16 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 
 		/* Successfully isolated */
 		cc->finished_update_migrate = true;
+<<<<<<< HEAD
 		del_page_from_lru_list(zone, page, page_lru(page));
+=======
+		del_page_from_lru_list(page, lruvec, page_lru(page));
+>>>>>>> common/android-3.10.y
 		list_add(&page->lru, migratelist);
 		cc->nr_migratepages++;
 		nr_isolated++;
 
+check_compact_cluster:
 		/* Avoid isolating too much */
 		if (cc->nr_migratepages == COMPACT_CLUSTER_MAX) {
 			++low_pfn;
@@ -591,8 +768,12 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 		continue;
 
 next_pageblock:
+<<<<<<< HEAD
 		low_pfn += pageblock_nr_pages;
 		low_pfn = ALIGN(low_pfn, pageblock_nr_pages) - 1;
+=======
+		low_pfn = ALIGN(low_pfn + 1, pageblock_nr_pages) - 1;
+>>>>>>> common/android-3.10.y
 		last_pageblock_nr = pageblock_nr;
 	}
 
@@ -624,17 +805,33 @@ static void isolate_freepages(struct zone *zone,
 				struct compact_control *cc)
 {
 	struct page *page;
+<<<<<<< HEAD
 	unsigned long high_pfn, low_pfn, pfn, zone_end_pfn, end_pfn;
+=======
+	unsigned long high_pfn, low_pfn, pfn, z_end_pfn;
+>>>>>>> common/android-3.10.y
 	int nr_freepages = cc->nr_freepages;
 	struct list_head *freelist = &cc->freepages;
 
 	/*
 	 * Initialise the free scanner. The starting point is where we last
+<<<<<<< HEAD
 	 * scanned from (or the end of the zone if starting). The low point
 	 * is the end of the pageblock the migration scanner is using.
 	 */
 	pfn = cc->free_pfn;
 	low_pfn = cc->migrate_pfn + pageblock_nr_pages;
+=======
+	 * successfully isolated from, zone-cached value, or the end of the
+	 * zone when isolating for the first time. We need this aligned to
+	 * the pageblock boundary, because we do pfn -= pageblock_nr_pages
+	 * in the for loop.
+	 * The low boundary is the end of the pageblock the migration scanner
+	 * is using.
+	 */
+	pfn = cc->free_pfn & ~(pageblock_nr_pages-1);
+	low_pfn = ALIGN(cc->migrate_pfn + 1, pageblock_nr_pages);
+>>>>>>> common/android-3.10.y
 
 	/*
 	 * Take care that if the migration scanner is at the end of the zone
@@ -643,16 +840,27 @@ static void isolate_freepages(struct zone *zone,
 	 */
 	high_pfn = min(low_pfn, pfn);
 
+<<<<<<< HEAD
 	zone_end_pfn = zone->zone_start_pfn + zone->spanned_pages;
+=======
+	z_end_pfn = zone_end_pfn(zone);
+>>>>>>> common/android-3.10.y
 
 	/*
 	 * Isolate free pages until enough are available to migrate the
 	 * pages on cc->migratepages. We stop searching if the migrate
 	 * and free page scanners meet or enough free pages are isolated.
 	 */
+<<<<<<< HEAD
 	for (; pfn > low_pfn && cc->nr_migratepages > nr_freepages;
 					pfn -= pageblock_nr_pages) {
 		unsigned long isolated;
+=======
+	for (; pfn >= low_pfn && cc->nr_migratepages > nr_freepages;
+					pfn -= pageblock_nr_pages) {
+		unsigned long isolated;
+		unsigned long end_pfn;
+>>>>>>> common/android-3.10.y
 
 		if (!pfn_valid(pfn))
 			continue;
@@ -680,6 +888,7 @@ static void isolate_freepages(struct zone *zone,
 		isolated = 0;
 
 		/*
+<<<<<<< HEAD
 		 * As pfn may not start aligned, pfn+pageblock_nr_page
 		 * may cross a MAX_ORDER_NR_PAGES boundary and miss
 		 * a pfn_valid check. Ensure isolate_freepages_block()
@@ -687,6 +896,12 @@ static void isolate_freepages(struct zone *zone,
 		 */
 		end_pfn = ALIGN(pfn + 1, pageblock_nr_pages);
 		end_pfn = min(end_pfn, zone_end_pfn);
+=======
+		 * Take care when isolating in last pageblock of a zone which
+		 * ends in the middle of a pageblock.
+		 */
+		end_pfn = min(pfn + pageblock_nr_pages, z_end_pfn);
+>>>>>>> common/android-3.10.y
 		isolated = isolate_freepages_block(cc, pfn, end_pfn,
 						   freelist, false);
 		nr_freepages += isolated;
@@ -705,7 +920,18 @@ static void isolate_freepages(struct zone *zone,
 	/* split_free_page does not map the pages */
 	map_pages(freelist);
 
+<<<<<<< HEAD
 	cc->free_pfn = high_pfn;
+=======
+	/*
+	 * If we crossed the migrate scanner, we want to keep it that way
+	 * so that compact_finished() may detect this
+	 */
+	if (pfn < low_pfn)
+		cc->free_pfn = max(pfn, zone->zone_start_pfn);
+	else
+		cc->free_pfn = high_pfn;
+>>>>>>> common/android-3.10.y
 	cc->nr_freepages = nr_freepages;
 }
 
@@ -775,7 +1001,11 @@ static isolate_migrate_t isolate_migratepages(struct zone *zone,
 	low_pfn = max(cc->migrate_pfn, zone->zone_start_pfn);
 
 	/* Only scan within a pageblock boundary */
+<<<<<<< HEAD
 	end_pfn = ALIGN(low_pfn + pageblock_nr_pages, pageblock_nr_pages);
+=======
+	end_pfn = ALIGN(low_pfn + 1, pageblock_nr_pages);
+>>>>>>> common/android-3.10.y
 
 	/* Do not cross the free scanner or scan within a memory hole */
 	if (end_pfn > cc->free_pfn || !pfn_valid(low_pfn)) {
@@ -900,7 +1130,11 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 {
 	int ret;
 	unsigned long start_pfn = zone->zone_start_pfn;
+<<<<<<< HEAD
 	unsigned long end_pfn = zone->zone_start_pfn + zone->spanned_pages;
+=======
+	unsigned long end_pfn = zone_end_pfn(zone);
+>>>>>>> common/android-3.10.y
 
 	ret = compaction_suitable(zone, cc->order);
 	switch (ret) {
@@ -914,6 +1148,17 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 	}
 
 	/*
+<<<<<<< HEAD
+=======
+	 * Clear pageblock skip if there were failures recently and compaction
+	 * is about to be retried after being deferred. kswapd does not do
+	 * this reset as it'll reset the cached information when going to sleep.
+	 */
+	if (compaction_restarting(zone, cc->order) && !current_is_kswapd())
+		__reset_isolation_suitable(zone);
+
+	/*
+>>>>>>> common/android-3.10.y
 	 * Setup to move all movable pages to the end of the zone. Used cached
 	 * information on where the scanners should start but check that it
 	 * is initialised by ensuring the values are within zone boundaries.
@@ -928,6 +1173,7 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		cc->migrate_pfn = start_pfn;
 		zone->compact_cached_migrate_pfn = cc->migrate_pfn;
 	}
+<<<<<<< HEAD
 
 	/*
 	 * Clear pageblock skip if there were failures recently and compaction
@@ -936,6 +1182,8 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 	 */
 	if (compaction_restarting(zone, cc->order) && !current_is_kswapd())
 		__reset_isolation_suitable(zone);
+=======
+>>>>>>> common/android-3.10.y
 
 	migrate_prep_local();
 
@@ -946,7 +1194,11 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		switch (isolate_migratepages(zone, cc)) {
 		case ISOLATE_ABORT:
 			ret = COMPACT_PARTIAL;
+<<<<<<< HEAD
 			putback_lru_pages(&cc->migratepages);
+=======
+			putback_movable_pages(&cc->migratepages);
+>>>>>>> common/android-3.10.y
 			cc->nr_migratepages = 0;
 			goto out;
 		case ISOLATE_NONE:
@@ -957,19 +1209,28 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 
 		nr_migrate = cc->nr_migratepages;
 		err = migrate_pages(&cc->migratepages, compaction_alloc,
-				(unsigned long)cc, false,
-				cc->sync ? MIGRATE_SYNC_LIGHT : MIGRATE_ASYNC);
+				(unsigned long)cc,
+				cc->sync ? MIGRATE_SYNC_LIGHT : MIGRATE_ASYNC,
+				MR_COMPACTION);
 		update_nr_listpages(cc);
 		nr_remaining = cc->nr_migratepages;
 
 		trace_mm_compaction_migratepages(nr_migrate - nr_remaining,
 						nr_remaining);
 
-		/* Release LRU pages not migrated */
+		/* Release isolated pages not migrated */
 		if (err) {
-			putback_lru_pages(&cc->migratepages);
+			putback_movable_pages(&cc->migratepages);
 			cc->nr_migratepages = 0;
+<<<<<<< HEAD
 			if (err == -ENOMEM) {
+=======
+			/*
+			 * migrate_pages() may return -ENOMEM when scanners meet
+			 * and we want compact_finished() to detect it
+			 */
+			if (err == -ENOMEM && cc->free_pfn > cc->migrate_pfn) {
+>>>>>>> common/android-3.10.y
 				ret = COMPACT_PARTIAL;
 				goto out;
 			}
@@ -1065,7 +1326,7 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 
 
 /* Compact all zones within a node */
-static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
+static void __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
 {
 	int zoneid;
 	struct zone *zone;
@@ -1098,28 +1359,26 @@ static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
 		VM_BUG_ON(!list_empty(&cc->freepages));
 		VM_BUG_ON(!list_empty(&cc->migratepages));
 	}
-
-	return 0;
 }
 
-int compact_pgdat(pg_data_t *pgdat, int order)
+void compact_pgdat(pg_data_t *pgdat, int order)
 {
 	struct compact_control cc = {
 		.order = order,
 		.sync = false,
 	};
 
-	return __compact_pgdat(pgdat, &cc);
+	__compact_pgdat(pgdat, &cc);
 }
 
-static int compact_node(int nid)
+static void compact_node(int nid)
 {
 	struct compact_control cc = {
 		.order = -1,
 		.sync = true,
 	};
 
-	return __compact_pgdat(NODE_DATA(nid), &cc);
+	__compact_pgdat(NODE_DATA(nid), &cc);
 }
 
 /* Compact all nodes in the system */

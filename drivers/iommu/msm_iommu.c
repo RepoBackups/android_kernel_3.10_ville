@@ -381,7 +381,13 @@ static int msm_iommu_domain_init(struct iommu_domain *domain, int flags)
 	memset(priv->pgtable, 0, SZ_16K);
 	domain->priv = priv;
 
+<<<<<<< HEAD
 	clean_pte(priv->pgtable, priv->pgtable + NUM_FL_PTE, priv->redirect);
+=======
+	domain->geometry.aperture_start = 0;
+	domain->geometry.aperture_end   = (1ULL << 32) - 1;
+	domain->geometry.force_aperture = true;
+>>>>>>> common/android-3.10.y
 
 	return 0;
 
@@ -1141,7 +1147,7 @@ static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned int va,
 }
 
 static phys_addr_t msm_iommu_iova_to_phys(struct iommu_domain *domain,
-					  unsigned long va)
+					  dma_addr_t va)
 {
 	struct msm_priv *priv;
 	struct msm_iommu_drvdata *iommu_drvdata;

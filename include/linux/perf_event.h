@@ -14,11 +14,10 @@
 #ifndef _LINUX_PERF_EVENT_H
 #define _LINUX_PERF_EVENT_H
 
-#include <linux/types.h>
-#include <linux/ioctl.h>
-#include <asm/byteorder.h>
+#include <uapi/linux/perf_event.h>
 
 /*
+<<<<<<< HEAD
  * User-space ABI bits:
  */
 
@@ -576,11 +575,12 @@ enum perf_callchain_context {
 
 #ifdef __KERNEL__
 /*
+=======
+>>>>>>> common/android-3.10.y
  * Kernel-internal data types and definitions:
  */
 
 #ifdef CONFIG_PERF_EVENTS
-# include <linux/cgroup.h>
 # include <asm/perf_event.h>
 # include <asm/local64.h>
 #endif
@@ -610,9 +610,8 @@ struct perf_guest_info_callbacks {
 #include <linux/static_key.h>
 #include <linux/atomic.h>
 #include <linux/sysfs.h>
+#include <linux/perf_regs.h>
 #include <asm/local.h>
-
-#define PERF_MAX_STACK_DEPTH		255
 
 struct perf_callchain_entry {
 	__u64				nr;
@@ -657,6 +656,11 @@ struct perf_branch_stack {
 	struct perf_branch_entry	entries[0];
 };
 
+struct perf_regs_user {
+	__u64		abi;
+	struct pt_regs	*regs;
+};
+
 struct task_struct;
 
 /*
@@ -680,8 +684,10 @@ struct hw_perf_event {
 			u64		last_tag;
 			unsigned long	config_base;
 			unsigned long	event_base;
+			int		event_base_rdpmc;
 			int		idx;
 			int		last_cpu;
+			int		flags;
 
 			struct hw_perf_event_extra extra_reg;
 			struct hw_perf_event_extra branch_reg;
@@ -689,16 +695,21 @@ struct hw_perf_event {
 		struct { /* software */
 			struct hrtimer	hrtimer;
 		};
+		struct { /* tracepoint */
+			struct task_struct	*tp_target;
+			/* for tp_event->class */
+			struct list_head	tp_list;
+		};
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 		struct { /* breakpoint */
-			struct arch_hw_breakpoint	info;
-			struct list_head		bp_list;
 			/*
 			 * Crufty hack to avoid the chicken and egg
 			 * problem hw_breakpoint has with context
 			 * creation and event initalization.
 			 */
 			struct task_struct		*bp_target;
+			struct arch_hw_breakpoint	info;
+			struct list_head		bp_list;
 		};
 #endif
 	};
@@ -850,22 +861,7 @@ struct swevent_hlist {
 #define PERF_ATTACH_GROUP	0x02
 #define PERF_ATTACH_TASK	0x04
 
-#ifdef CONFIG_CGROUP_PERF
-/*
- * perf_cgroup_info keeps track of time_enabled for a cgroup.
- * This is a per-cpu dynamically allocated data structure.
- */
-struct perf_cgroup_info {
-	u64				time;
-	u64				timestamp;
-};
-
-struct perf_cgroup {
-	struct				cgroup_subsys_state css;
-	struct				perf_cgroup_info *info;	/* timing info, one per cpu */
-};
-#endif
-
+struct perf_cgroup;
 struct ring_buffer;
 
 /**
@@ -1110,6 +1106,8 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr,
 				struct task_struct *task,
 				perf_overflow_handler_t callback,
 				void *context);
+extern void perf_pmu_migrate_context(struct pmu *pmu,
+				int src_cpu, int dst_cpu);
 extern u64 perf_event_read_value(struct perf_event *event,
 				 u64 *enabled, u64 *running);
 
@@ -1131,16 +1129,28 @@ struct perf_sample_data {
 		u32	reserved;
 	}				cpu_entry;
 	u64				period;
+	union  perf_mem_data_src	data_src;
 	struct perf_callchain_entry	*callchain;
 	struct perf_raw_record		*raw;
 	struct perf_branch_stack	*br_stack;
+	struct perf_regs_user		regs_user;
+	u64				stack_user_size;
+	u64				weight;
 };
 
-static inline void perf_sample_data_init(struct perf_sample_data *data, u64 addr)
+static inline void perf_sample_data_init(struct perf_sample_data *data,
+					 u64 addr, u64 period)
 {
+	/* remaining struct members initialized in perf_prepare_sample() */
 	data->addr = addr;
 	data->raw  = NULL;
 	data->br_stack = NULL;
+	data->period = period;
+	data->regs_user.abi = PERF_SAMPLE_REGS_ABI_NONE;
+	data->regs_user.regs = NULL;
+	data->stack_user_size = 0;
+	data->weight = 0;
+	data->data_src.val = 0;
 }
 
 extern void perf_output_sample(struct perf_output_handle *handle,
@@ -1247,10 +1257,17 @@ static inline void perf_callchain_store(struct perf_callchain_entry *entry, u64 
 extern int sysctl_perf_event_paranoid;
 extern int sysctl_perf_event_mlock;
 extern int sysctl_perf_event_sample_rate;
+extern int sysctl_perf_cpu_time_max_percent;
+
+extern void perf_sample_event_took(u64 sample_len_ns);
 
 extern int perf_proc_update_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
 		loff_t *ppos);
+extern int perf_cpu_time_max_percent_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp,
+		loff_t *ppos);
+
 
 static inline bool perf_paranoid_tracepoint_raw(void)
 {
@@ -1270,7 +1287,8 @@ static inline bool perf_paranoid_kernel(void)
 extern void perf_event_init(void);
 extern void perf_tp_event(u64 addr, u64 count, void *record,
 			  int entry_size, struct pt_regs *regs,
-			  struct hlist_head *head, int rctx);
+			  struct hlist_head *head, int rctx,
+			  struct task_struct *task);
 extern void perf_bp_event(struct perf_event *event, void *data);
 
 #ifndef perf_misc_flags
@@ -1287,12 +1305,15 @@ static inline bool has_branch_stack(struct perf_event *event)
 extern int perf_output_begin(struct perf_output_handle *handle,
 			     struct perf_event *event, unsigned int size);
 extern void perf_output_end(struct perf_output_handle *handle);
-extern void perf_output_copy(struct perf_output_handle *handle,
+extern unsigned int perf_output_copy(struct perf_output_handle *handle,
 			     const void *buf, unsigned int len);
+extern unsigned int perf_output_skip(struct perf_output_handle *handle,
+				     unsigned int len);
 extern int perf_swevent_get_recursion_context(void);
 extern void perf_swevent_put_recursion_context(int rctx);
 extern void perf_event_enable(struct perf_event *event);
 extern void perf_event_disable(struct perf_event *event);
+extern int __perf_event_disable(void *info);
 extern void perf_event_task_tick(void);
 #else
 static inline void
@@ -1331,9 +1352,19 @@ static inline int  perf_swevent_get_recursion_context(void)		{ return -1; }
 static inline void perf_swevent_put_recursion_context(int rctx)		{ }
 static inline void perf_event_enable(struct perf_event *event)		{ }
 static inline void perf_event_disable(struct perf_event *event)		{ }
+static inline int __perf_event_disable(void *info)			{ return -1; }
 static inline void perf_event_task_tick(void)				{ }
 #endif
 
+<<<<<<< HEAD
+=======
+#if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_NO_HZ_FULL)
+extern bool perf_event_can_stop_tick(void);
+#else
+static inline bool perf_event_can_stop_tick(void)			{ return true; }
+#endif
+
+>>>>>>> common/android-3.10.y
 #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_INTEL)
 extern void perf_restore_debug_store(void);
 #else
@@ -1349,15 +1380,31 @@ static inline void perf_restore_debug_store(void)			{ }
 do {									\
 	static struct notifier_block fn##_nb __cpuinitdata =		\
 		{ .notifier_call = fn, .priority = CPU_PRI_PERF };	\
+	unsigned long cpu = smp_processor_id();				\
+	unsigned long flags;						\
 	fn(&fn##_nb, (unsigned long)CPU_UP_PREPARE,			\
-		(void *)(unsigned long)smp_processor_id());		\
+		(void *)(unsigned long)cpu);				\
+	local_irq_save(flags);						\
 	fn(&fn##_nb, (unsigned long)CPU_STARTING,			\
-		(void *)(unsigned long)smp_processor_id());		\
+		(void *)(unsigned long)cpu);				\
+	local_irq_restore(flags);					\
 	fn(&fn##_nb, (unsigned long)CPU_ONLINE,				\
-		(void *)(unsigned long)smp_processor_id());		\
+		(void *)(unsigned long)cpu);				\
 	register_cpu_notifier(&fn##_nb);				\
 } while (0)
 
+
+struct perf_pmu_events_attr {
+	struct device_attribute attr;
+	u64 id;
+	const char *event_str;
+};
+
+#define PMU_EVENT_ATTR(_name, _var, _id, _show)				\
+static struct perf_pmu_events_attr _var = {				\
+	.attr = __ATTR(_name, 0444, _show, NULL),			\
+	.id   =  _id,							\
+};
 
 #define PMU_FORMAT_ATTR(_name, _format)					\
 static ssize_t								\
@@ -1371,5 +1418,4 @@ _name##_show(struct device *dev,					\
 									\
 static struct device_attribute format_attr_##_name = __ATTR_RO(_name)
 
-#endif /* __KERNEL__ */
 #endif /* _LINUX_PERF_EVENT_H */

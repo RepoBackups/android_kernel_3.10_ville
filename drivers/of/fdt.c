@@ -186,6 +186,8 @@ static unsigned long unflatten_dt_node(struct boot_param_header *blob,
 			 */
 			fpsize = 1;
 			allocl = 2;
+			l = 1;
+			*pathp = '\0';
 		} else {
 			/* account for '/' and path size minus terminal 0
 			 * already in 'l'
@@ -198,10 +200,10 @@ static unsigned long unflatten_dt_node(struct boot_param_header *blob,
 	np = unflatten_dt_alloc(&mem, sizeof(struct device_node) + allocl,
 				__alignof__(struct device_node));
 	if (allnextpp) {
+		char *fn;
 		memset(np, 0, sizeof(*np));
-		np->full_name = ((char *)np) + sizeof(struct device_node);
+		np->full_name = fn = ((char *)np) + sizeof(*np);
 		if (new_format) {
-			char *fn = np->full_name;
 			/* rebuild full path for new format */
 			if (dad && dad->parent) {
 				strcpy(fn, dad->full_name);
@@ -215,9 +217,9 @@ static unsigned long unflatten_dt_node(struct boot_param_header *blob,
 				fn += strlen(fn);
 			}
 			*(fn++) = '/';
-			memcpy(fn, pathp, l);
-		} else
-			memcpy(np->full_name, pathp, l);
+		}
+		memcpy(fn, pathp, l);
+
 		prev_pp = &np->properties;
 		**allnextpp = np;
 		*allnextpp = &np->allnext;
@@ -461,7 +463,7 @@ int __init of_scan_flat_dt(int (*it)(unsigned long node,
 
 	do {
 		u32 tag = be32_to_cpup((__be32 *)p);
-		char *pathp;
+		const char *pathp;
 
 		p += 4;
 		if (tag == OF_DT_END_NODE) {
@@ -488,14 +490,8 @@ int __init of_scan_flat_dt(int (*it)(unsigned long node,
 		depth++;
 		pathp = (char *)p;
 		p = ALIGN(p + strlen(pathp) + 1, 4);
-		if ((*pathp) == '/') {
-			char *lp, *np;
-			for (lp = NULL, np = pathp; *np; np++)
-				if ((*np) == '/')
-					lp = np+1;
-			if (lp != NULL)
-				pathp = lp;
-		}
+		if (*pathp == '/')
+			pathp = kbasename(pathp);
 		rc = it(p, pathp, depth, data);
 		if (rc != 0)
 			break;
@@ -665,36 +661,66 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	return 0;
 }
 
+/*
+ * Convert configs to something easy to use in C code
+ */
+#if defined(CONFIG_CMDLINE_FORCE)
+static const int overwrite_incoming_cmdline = 1;
+static const int read_dt_cmdline;
+static const int concat_cmdline;
+#elif defined(CONFIG_CMDLINE_EXTEND)
+static const int overwrite_incoming_cmdline;
+static const int read_dt_cmdline = 1;
+static const int concat_cmdline = 1;
+#else /* CMDLINE_FROM_BOOTLOADER */
+static const int overwrite_incoming_cmdline;
+static const int read_dt_cmdline = 1;
+static const int concat_cmdline;
+#endif
+
+#ifdef CONFIG_CMDLINE
+static const char *config_cmdline = CONFIG_CMDLINE;
+#else
+static const char *config_cmdline = "";
+#endif
+
 int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
-	unsigned long l;
-	char *p;
+	unsigned long l = 0;
+	char *p = NULL;
+	char *cmdline = data;
 
 	pr_debug("search \"chosen\", depth: %d, uname: %s\n", depth, uname);
 
-	if (depth != 1 || !data ||
+	if (depth != 1 || !cmdline ||
 	    (strcmp(uname, "chosen") != 0 && strcmp(uname, "chosen@0") != 0))
 		return 0;
 
 	early_init_dt_check_for_initrd(node);
 
-	/* Retrieve command line */
-	p = of_get_flat_dt_prop(node, "bootargs", &l);
-	if (p != NULL && l > 0)
-		strlcpy(data, p, min((int)l, COMMAND_LINE_SIZE));
+	/* Put CONFIG_CMDLINE in if forced or if data had nothing in it to start */
+	if (overwrite_incoming_cmdline || !cmdline[0])
+		strlcpy(cmdline, config_cmdline, COMMAND_LINE_SIZE);
 
-	/*
-	 * CONFIG_CMDLINE is meant to be a default in case nothing else
-	 * managed to set the command line, unless CONFIG_CMDLINE_FORCE
-	 * is set in which case we override whatever was found earlier.
-	 */
-#ifdef CONFIG_CMDLINE
-#ifndef CONFIG_CMDLINE_FORCE
-	if (!((char *)data)[0])
-#endif
-		strlcpy(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
-#endif /* CONFIG_CMDLINE */
+	/* Retrieve command line unless forcing */
+	if (read_dt_cmdline)
+		p = of_get_flat_dt_prop(node, "bootargs", &l);
+
+	if (p != NULL && l > 0) {
+		if (concat_cmdline) {
+			int cmdline_len;
+			int copy_len;
+			strlcat(cmdline, " ", COMMAND_LINE_SIZE);
+			cmdline_len = strlen(cmdline);
+			copy_len = COMMAND_LINE_SIZE - cmdline_len - 1;
+			copy_len = min((int)l, copy_len);
+			strncpy(cmdline + cmdline_len, p, copy_len);
+			cmdline[cmdline_len + copy_len] = '\0';
+		} else {
+			strlcpy(cmdline, p, min((int)l, COMMAND_LINE_SIZE));
+		}
+	}
 
 	pr_debug("Command line is: %s\n", (char*)data);
 
@@ -712,7 +738,7 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
  */
 void __init unflatten_device_tree(void)
 {
-	__unflatten_device_tree(initial_boot_params, &allnodes,
+	__unflatten_device_tree(initial_boot_params, &of_allnodes,
 				early_init_dt_alloc_memory_arch);
 
 	/* Get pointer to "/chosen" and "/aliasas" nodes for use everywhere */

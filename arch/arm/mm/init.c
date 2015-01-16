@@ -21,15 +21,19 @@
 #include <linux/highmem.h>
 #include <linux/gfp.h>
 #include <linux/memblock.h>
+<<<<<<< HEAD
 #include <linux/sort.h>
 #include <linux/dma-contiguous.h>
+=======
+#include <linux/dma-contiguous.h>
+#include <linux/sizes.h>
+>>>>>>> common/android-3.10.y
 
 #include <asm/mach-types.h>
 #include <asm/memblock.h>
 #include <asm/prom.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
-#include <asm/sizes.h>
 #include <asm/tlb.h>
 #include <asm/fixmap.h>
 #include <asm/cputype.h>
@@ -227,7 +231,7 @@ EXPORT_SYMBOL(arm_dma_zone_size);
  * allocations.  This must be the smallest DMA mask in the system,
  * so a successful GFP_DMA allocation will always satisfy this.
  */
-u32 arm_dma_limit;
+phys_addr_t arm_dma_limit;
 
 static void __init arm_adjust_dma_zone(unsigned long *size, unsigned long *hole,
 	unsigned long dma_size)
@@ -253,6 +257,7 @@ void __init setup_dma_zone(struct machine_desc *mdesc)
 #endif
 }
 
+<<<<<<< HEAD
 #ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
 static void __init arm_bootmem_free_hmnm(unsigned long max_low,
 	unsigned long max_high)
@@ -276,6 +281,8 @@ static void __init arm_bootmem_free_hmnm(unsigned long max_low,
 }
 
 #else
+=======
+>>>>>>> common/android-3.10.y
 static void __init arm_bootmem_free(unsigned long min, unsigned long max_low,
 	unsigned long max_high)
 {
@@ -364,7 +371,7 @@ phys_addr_t __init arm_memblock_steal(phys_addr_t size, phys_addr_t align)
 
 	BUG_ON(!arm_memblock_steal_permitted);
 
-	phys = memblock_alloc(size, align);
+	phys = memblock_alloc_base(size, align, MEMBLOCK_ALLOC_ANYWHERE);
 	memblock_free(phys, size);
 	memblock_remove(phys, size);
 
@@ -517,24 +524,6 @@ void __init bootmem_init(void)
 	max_pfn = max_high - PHYS_PFN_OFFSET;
 }
 
-static inline int free_area(unsigned long pfn, unsigned long end, char *s)
-{
-	unsigned int pages = 0, size = (end - pfn) << (PAGE_SHIFT - 10);
-
-	for (; pfn < end; pfn++) {
-		struct page *page = pfn_to_page(pfn);
-		ClearPageReserved(page);
-		init_page_count(page);
-		__free_page(page);
-		pages++;
-	}
-
-	if (size && s)
-		printk(KERN_INFO "Freeing %s memory: %dK\n", s, size);
-
-	return pages;
-}
-
 /*
  * Poison init memory with an undefined instruction (ARM) or a branch to an
  * undefined instruction (Thumb).
@@ -627,6 +616,14 @@ static void __init free_unused_memmap(struct meminfo *mi)
 #endif
 }
 
+#ifdef CONFIG_HIGHMEM
+static inline void free_area_high(unsigned long pfn, unsigned long end)
+{
+	for (; pfn < end; pfn++)
+		free_highmem_page(pfn_to_page(pfn));
+}
+#endif
+
 static void __init free_highpages(void)
 {
 #ifdef CONFIG_HIGHMEM
@@ -662,8 +659,7 @@ static void __init free_highpages(void)
 			if (res_end > end)
 				res_end = end;
 			if (res_start != start)
-				totalhigh_pages += free_area(start, res_start,
-							     NULL);
+				free_area_high(start, res_start);
 			start = res_end;
 			if (start == end)
 				break;
@@ -671,9 +667,8 @@ static void __init free_highpages(void)
 
 		/* And now free anything which remains */
 		if (start < end)
-			totalhigh_pages += free_area(start, end, NULL);
+			free_area_high(start, end);
 	}
-	totalram_pages += totalhigh_pages;
 #endif
 }
 
@@ -702,8 +697,7 @@ void __init mem_init(void)
 
 #ifdef CONFIG_SA1111
 	/* now that our DMA memory is actually so designated, we can free it */
-	totalram_pages += free_area(PHYS_PFN_OFFSET,
-				    __phys_to_pfn(__pa(swapper_pg_dir)), NULL);
+	free_reserved_area(__va(PHYS_OFFSET), swapper_pg_dir, 0, NULL);
 #endif
 
 	free_highpages();
@@ -847,9 +841,7 @@ void free_initmem(void)
 	extern char __tcm_start, __tcm_end;
 
 	poison_init_mem(&__tcm_start, &__tcm_end - &__tcm_start);
-	totalram_pages += free_area(__phys_to_pfn(__pa(&__tcm_start)),
-				    __phys_to_pfn(__pa(&__tcm_end)),
-				    "TCM link");
+	free_reserved_area(&__tcm_start, &__tcm_end, 0, "TCM link");
 #endif
 
 #ifdef CONFIG_STRICT_MEMORY_RWX
@@ -861,6 +853,7 @@ void free_initmem(void)
 	totalram_pages += reclaimed_initmem;
 #else
 	poison_init_mem(__init_begin, __init_end - __init_begin);
+<<<<<<< HEAD
 	if (!machine_is_integrator() && !machine_is_cintegrator()) {
 		reclaimed_initmem = free_area(__phys_to_pfn(__pa(__init_begin)),
 					    __phys_to_pfn(__pa(__init_end)),
@@ -868,6 +861,10 @@ void free_initmem(void)
 		totalram_pages += reclaimed_initmem;
 	}
 #endif
+=======
+	if (!machine_is_integrator() && !machine_is_cintegrator())
+		free_initmem_default(0);
+>>>>>>> common/android-3.10.y
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
@@ -880,10 +877,14 @@ void free_initrd_mem(unsigned long start, unsigned long end)
 
 	if (!keep_initrd) {
 		poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
+<<<<<<< HEAD
 		reclaimed_initrd_mem = free_area(__phys_to_pfn(__pa(start)),
 						 __phys_to_pfn(__pa(end)),
 						 "initrd");
 		totalram_pages += reclaimed_initrd_mem;
+=======
+		free_reserved_area(start, end, 0, "initrd");
+>>>>>>> common/android-3.10.y
 	}
 }
 

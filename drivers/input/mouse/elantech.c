@@ -11,6 +11,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/dmi.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/input.h>
@@ -815,7 +816,11 @@ static int elantech_set_absolute_mode(struct psmouse *psmouse)
 		break;
 
 	case 3:
-		etd->reg_10 = 0x0b;
+		if (etd->set_hw_resolution)
+			etd->reg_10 = 0x0b;
+		else
+			etd->reg_10 = 0x01;
+
 		if (elantech_write_reg(psmouse, 0x10, etd->reg_10))
 			rc = -1;
 
@@ -1059,7 +1064,7 @@ static int elantech_set_input_params(struct psmouse *psmouse)
 			input_set_abs_params(dev, ABS_TOOL_WIDTH, ETP_WMIN_V2,
 					     ETP_WMAX_V2, 0, 0);
 		}
-		input_mt_init_slots(dev, 2);
+		input_mt_init_slots(dev, 2, 0);
 		input_set_abs_params(dev, ABS_MT_POSITION_X, x_min, x_max, 0, 0);
 		input_set_abs_params(dev, ABS_MT_POSITION_Y, y_min, y_max, 0, 0);
 		break;
@@ -1088,7 +1093,7 @@ static int elantech_set_input_params(struct psmouse *psmouse)
 		input_set_abs_params(dev, ABS_TOOL_WIDTH, ETP_WMIN_V2,
 				     ETP_WMAX_V2, 0, 0);
 		/* Multitouch capable pad, up to 5 fingers. */
-		input_mt_init_slots(dev, ETP_MAX_FINGERS);
+		input_mt_init_slots(dev, ETP_MAX_FINGERS, 0);
 		input_set_abs_params(dev, ABS_MT_POSITION_X, x_min, x_max, 0, 0);
 		input_set_abs_params(dev, ABS_MT_POSITION_Y, y_min, y_max, 0, 0);
 		input_abs_set_res(dev, ABS_MT_POSITION_X, x_res);
@@ -1322,6 +1327,23 @@ static int elantech_reconnect(struct psmouse *psmouse)
 }
 
 /*
+ * Some hw_version 3 models go into error state when we try to set
+ * bit 3 and/or bit 1 of r10.
+ */
+static const struct dmi_system_id no_hw_res_dmi_table[] = {
+#if defined(CONFIG_DMI) && defined(CONFIG_X86)
+	{
+		/* Gigabyte U2442 */
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GIGABYTE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "U2442"),
+		},
+	},
+#endif
+	{ }
+};
+
+/*
  * determine hardware version and set some properties according to it.
  */
 static int elantech_set_properties(struct elantech_data *etd)
@@ -1371,6 +1393,9 @@ static int elantech_set_properties(struct elantech_data *etd)
 		if (etd->fw_version >= 0x020800)
 			etd->reports_pressure = true;
 	}
+
+	/* Enable real hardware resolution on hw_version 3 ? */
+	etd->set_hw_resolution = !dmi_check_system(no_hw_res_dmi_table);
 
 	return 0;
 }

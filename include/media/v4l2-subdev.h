@@ -21,6 +21,7 @@
 #ifndef _V4L2_SUBDEV_H
 #define _V4L2_SUBDEV_H
 
+#include <linux/types.h>
 #include <linux/v4l2-subdev.h>
 #include <media/media-entity.h>
 #include <media/v4l2-common.h>
@@ -44,6 +45,7 @@ struct v4l2_fh;
 struct v4l2_subdev;
 struct v4l2_subdev_fh;
 struct tuner_setup;
+struct v4l2_mbus_frame_desc;
 
 struct v4l2_decode_vbi_line {
 	u32 is_second_field;	
@@ -68,6 +70,38 @@ struct v4l2_subdev_io_pin_config {
 	u8 strength;	
 };
 
+<<<<<<< HEAD
+=======
+/*
+   s_io_pin_config: configure one or more chip I/O pins for chips that
+	multiplex different internal signal pads out to IO pins.  This function
+	takes a pointer to an array of 'n' pin configuration entries, one for
+	each pin being configured.  This function could be called at times
+	other than just subdevice initialization.
+
+   init: initialize the sensor registers to some sort of reasonable default
+	values. Do not use for new drivers and should be removed in existing
+	drivers.
+
+   load_fw: load firmware.
+
+   reset: generic reset command. The argument selects which subsystems to
+	reset. Passing 0 will always reset the whole chip. Do not use for new
+	drivers without discussing this first on the linux-media mailinglist.
+	There should be no reason normally to reset a device.
+
+   s_gpio: set GPIO pins. Very simple right now, might need to be extended with
+	a direction argument if needed.
+
+   s_power: puts subdevice in power saving mode (on == 0) or normal operation
+	mode (on == 1).
+
+   interrupt_service_routine: Called by the bridge chip's interrupt service
+	handler, when an interrupt status has be raised due to this subdev,
+	so that this subdev can handle the details.  It may schedule work to be
+	performed later.  It must not sleep.  *Called from an IRQ context*.
+ */
+>>>>>>> common/android-3.10.y
 struct v4l2_subdev_core_ops {
 	int (*g_chip_ident)(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip);
 	int (*log_status)(struct v4l2_subdev *sd);
@@ -88,7 +122,7 @@ struct v4l2_subdev_core_ops {
 	long (*ioctl)(struct v4l2_subdev *sd, unsigned int cmd, void *arg);
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	int (*g_register)(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg);
-	int (*s_register)(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg);
+	int (*s_register)(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg);
 #endif
 	int (*s_power)(struct v4l2_subdev *sd, int on);
 	int (*interrupt_service_routine)(struct v4l2_subdev *sd,
@@ -101,12 +135,12 @@ struct v4l2_subdev_core_ops {
 
 struct v4l2_subdev_tuner_ops {
 	int (*s_radio)(struct v4l2_subdev *sd);
-	int (*s_frequency)(struct v4l2_subdev *sd, struct v4l2_frequency *freq);
+	int (*s_frequency)(struct v4l2_subdev *sd, const struct v4l2_frequency *freq);
 	int (*g_frequency)(struct v4l2_subdev *sd, struct v4l2_frequency *freq);
 	int (*g_tuner)(struct v4l2_subdev *sd, struct v4l2_tuner *vt);
-	int (*s_tuner)(struct v4l2_subdev *sd, struct v4l2_tuner *vt);
+	int (*s_tuner)(struct v4l2_subdev *sd, const struct v4l2_tuner *vt);
 	int (*g_modulator)(struct v4l2_subdev *sd, struct v4l2_modulator *vm);
-	int (*s_modulator)(struct v4l2_subdev *sd, struct v4l2_modulator *vm);
+	int (*s_modulator)(struct v4l2_subdev *sd, const struct v4l2_modulator *vm);
 	int (*s_type_addr)(struct v4l2_subdev *sd, struct tuner_setup *type);
 	int (*s_config)(struct v4l2_subdev *sd, const struct v4l2_priv_tun_config *config);
 };
@@ -118,6 +152,84 @@ struct v4l2_subdev_audio_ops {
 	int (*s_stream)(struct v4l2_subdev *sd, int enable);
 };
 
+<<<<<<< HEAD
+=======
+/* Indicates the @length field specifies maximum data length. */
+#define V4L2_MBUS_FRAME_DESC_FL_LEN_MAX		(1U << 0)
+/* Indicates user defined data format, i.e. non standard frame format. */
+#define V4L2_MBUS_FRAME_DESC_FL_BLOB		(1U << 1)
+
+/**
+ * struct v4l2_mbus_frame_desc_entry - media bus frame description structure
+ * @flags: V4L2_MBUS_FRAME_DESC_FL_* flags
+ * @pixelcode: media bus pixel code, valid if FRAME_DESC_FL_BLOB is not set
+ * @length: number of octets per frame, valid for compressed or unspecified
+ *          formats
+ */
+struct v4l2_mbus_frame_desc_entry {
+	u16 flags;
+	u32 pixelcode;
+	u32 length;
+};
+
+#define V4L2_FRAME_DESC_ENTRY_MAX	4
+
+/**
+ * struct v4l2_mbus_frame_desc - media bus data frame description
+ * @entry: frame descriptors array
+ * @num_entries: number of entries in @entry array
+ */
+struct v4l2_mbus_frame_desc {
+	struct v4l2_mbus_frame_desc_entry entry[V4L2_FRAME_DESC_ENTRY_MAX];
+	unsigned short num_entries;
+};
+
+/*
+   s_std_output: set v4l2_std_id for video OUTPUT devices. This is ignored by
+	video input devices.
+
+   g_std_output: get current standard for video OUTPUT devices. This is ignored
+	by video input devices.
+
+   g_tvnorms_output: get v4l2_std_id with all standards supported by video
+	OUTPUT device. This is ignored by video input devices.
+
+   s_crystal_freq: sets the frequency of the crystal used to generate the
+	clocks in Hz. An extra flags field allows device specific configuration
+	regarding clock frequency dividers, etc. If not used, then set flags
+	to 0. If the frequency is not supported, then -EINVAL is returned.
+
+   g_input_status: get input status. Same as the status field in the v4l2_input
+	struct.
+
+   s_routing: see s_routing in audio_ops, except this version is for video
+	devices.
+
+   s_dv_timings(): Set custom dv timings in the sub device. This is used
+	when sub device is capable of setting detailed timing information
+	in the hardware to generate/detect the video signal.
+
+   g_dv_timings(): Get custom dv timings in the sub device.
+
+   enum_mbus_fmt: enumerate pixel formats, provided by a video data source
+
+   g_mbus_fmt: get the current pixel format, provided by a video data source
+
+   try_mbus_fmt: try to set a pixel format on a video data source
+
+   s_mbus_fmt: set a pixel format on a video data source
+
+   g_mbus_config: get supported mediabus configurations
+
+   s_mbus_config: set a certain mediabus configuration. This operation is added
+	for compatibility with soc-camera drivers and should not be used by new
+	software.
+
+   s_rx_buffer: set a host allocated memory buffer for the subdev. The subdev
+	can adjust @size to a lower value and must not write more data to the
+	buffer starting at @data than the original value of @size.
+ */
+>>>>>>> common/android-3.10.y
 struct v4l2_subdev_video_ops {
 	int (*s_routing)(struct v4l2_subdev *sd, u32 input, u32 output, u32 config);
 	int (*s_crystal_freq)(struct v4l2_subdev *sd, u32 freq, u32 flags);
@@ -127,7 +239,7 @@ struct v4l2_subdev_video_ops {
 	int (*s_stream)(struct v4l2_subdev *sd, int enable);
 	int (*cropcap)(struct v4l2_subdev *sd, struct v4l2_cropcap *cc);
 	int (*g_crop)(struct v4l2_subdev *sd, struct v4l2_crop *crop);
-	int (*s_crop)(struct v4l2_subdev *sd, struct v4l2_crop *crop);
+	int (*s_crop)(struct v4l2_subdev *sd, const struct v4l2_crop *crop);
 	int (*g_parm)(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
 	int (*s_parm)(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
 	int (*g_frame_interval)(struct v4l2_subdev *sd,
@@ -136,16 +248,25 @@ struct v4l2_subdev_video_ops {
 				struct v4l2_subdev_frame_interval *interval);
 	int (*enum_framesizes)(struct v4l2_subdev *sd, struct v4l2_frmsizeenum *fsize);
 	int (*enum_frameintervals)(struct v4l2_subdev *sd, struct v4l2_frmivalenum *fival);
+<<<<<<< HEAD
 	int (*enum_dv_presets) (struct v4l2_subdev *sd,
 			struct v4l2_dv_enum_preset *preset);
 	int (*s_dv_preset)(struct v4l2_subdev *sd,
 			struct v4l2_dv_preset *preset);
 	int (*query_dv_preset)(struct v4l2_subdev *sd,
 			struct v4l2_dv_preset *preset);
+=======
+>>>>>>> common/android-3.10.y
 	int (*s_dv_timings)(struct v4l2_subdev *sd,
 			struct v4l2_dv_timings *timings);
 	int (*g_dv_timings)(struct v4l2_subdev *sd,
 			struct v4l2_dv_timings *timings);
+	int (*enum_dv_timings)(struct v4l2_subdev *sd,
+			struct v4l2_enum_dv_timings *timings);
+	int (*query_dv_timings)(struct v4l2_subdev *sd,
+			struct v4l2_dv_timings *timings);
+	int (*dv_timings_cap)(struct v4l2_subdev *sd,
+			struct v4l2_dv_timings_cap *cap);
 	int (*enum_mbus_fmt)(struct v4l2_subdev *sd, unsigned int index,
 			     enum v4l2_mbus_pixelcode *code);
 	int (*enum_mbus_fsizes)(struct v4l2_subdev *sd,
@@ -156,6 +277,15 @@ struct v4l2_subdev_video_ops {
 			    struct v4l2_mbus_framefmt *fmt);
 	int (*s_mbus_fmt)(struct v4l2_subdev *sd,
 			  struct v4l2_mbus_framefmt *fmt);
+<<<<<<< HEAD
+=======
+	int (*g_mbus_config)(struct v4l2_subdev *sd,
+			     struct v4l2_mbus_config *cfg);
+	int (*s_mbus_config)(struct v4l2_subdev *sd,
+			     const struct v4l2_mbus_config *cfg);
+	int (*s_rx_buffer)(struct v4l2_subdev *sd, void *buf,
+			   unsigned int *size);
+>>>>>>> common/android-3.10.y
 };
 
 struct v4l2_subdev_vbi_ops {
@@ -223,6 +353,12 @@ struct v4l2_subdev_ir_ops {
 				struct v4l2_subdev_ir_parameters *params);
 };
 
+/**
+ * struct v4l2_subdev_pad_ops - v4l2-subdev pad level operations
+ * @get_frame_desc: get the current low level media bus frame parameters.
+ * @get_frame_desc: set the low level media bus frame parameters, @fd array
+ *                  may be adjusted by the subdev driver to device capabilities.
+ */
 struct v4l2_subdev_pad_ops {
 	int (*enum_mbus_code)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 			      struct v4l2_subdev_mbus_code_enum *code);
@@ -240,6 +376,21 @@ struct v4l2_subdev_pad_ops {
 		       struct v4l2_subdev_crop *crop);
 	int (*get_crop)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
 		       struct v4l2_subdev_crop *crop);
+	int (*get_selection)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
+			     struct v4l2_subdev_selection *sel);
+	int (*set_selection)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
+			     struct v4l2_subdev_selection *sel);
+	int (*get_edid)(struct v4l2_subdev *sd, struct v4l2_subdev_edid *edid);
+	int (*set_edid)(struct v4l2_subdev *sd, struct v4l2_subdev_edid *edid);
+#ifdef CONFIG_MEDIA_CONTROLLER
+	int (*link_validate)(struct v4l2_subdev *sd, struct media_link *link,
+			     struct v4l2_subdev_format *source_fmt,
+			     struct v4l2_subdev_format *sink_fmt);
+#endif /* CONFIG_MEDIA_CONTROLLER */
+	int (*get_frame_desc)(struct v4l2_subdev *sd, unsigned int pad,
+			      struct v4l2_mbus_frame_desc *fd);
+	int (*set_frame_desc)(struct v4l2_subdev *sd, unsigned int pad,
+			      struct v4l2_mbus_frame_desc *fd);
 };
 
 struct v4l2_subdev_ops {
@@ -296,13 +447,20 @@ struct v4l2_subdev {
 #define media_entity_to_v4l2_subdev(ent) \
 	container_of(ent, struct v4l2_subdev, entity)
 #define vdev_to_v4l2_subdev(vdev) \
+<<<<<<< HEAD
 	container_of(vdev, struct v4l2_subdev, devnode)
+=======
+	((struct v4l2_subdev *)video_get_drvdata(vdev))
+>>>>>>> common/android-3.10.y
 
 struct v4l2_subdev_fh {
 	struct v4l2_fh vfh;
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
-	struct v4l2_mbus_framefmt *try_fmt;
-	struct v4l2_rect *try_crop;
+	struct {
+		struct v4l2_mbus_framefmt try_fmt;
+		struct v4l2_rect try_crop;
+		struct v4l2_rect try_compose;
+	} *pad;
 #endif
 };
 
@@ -310,17 +468,19 @@ struct v4l2_subdev_fh {
 	container_of(fh, struct v4l2_subdev_fh, vfh)
 
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
-static inline struct v4l2_mbus_framefmt *
-v4l2_subdev_get_try_format(struct v4l2_subdev_fh *fh, unsigned int pad)
-{
-	return &fh->try_fmt[pad];
-}
+#define __V4L2_SUBDEV_MK_GET_TRY(rtype, fun_name, field_name)		\
+	static inline struct rtype *					\
+	v4l2_subdev_get_try_##fun_name(struct v4l2_subdev_fh *fh,	\
+				       unsigned int pad)		\
+	{								\
+		BUG_ON(unlikely(pad >= vdev_to_v4l2_subdev(		\
+					fh->vfh.vdev)->entity.num_pads)); \
+		return &fh->pad[pad].field_name;			\
+	}
 
-static inline struct v4l2_rect *
-v4l2_subdev_get_try_crop(struct v4l2_subdev_fh *fh, unsigned int pad)
-{
-	return &fh->try_crop[pad];
-}
+__V4L2_SUBDEV_MK_GET_TRY(v4l2_mbus_framefmt, format, try_fmt)
+__V4L2_SUBDEV_MK_GET_TRY(v4l2_rect, crop, try_compose)
+__V4L2_SUBDEV_MK_GET_TRY(v4l2_rect, compose, try_compose)
 #endif
 
 extern const struct v4l2_file_operations v4l2_subdev_fops;
@@ -345,6 +505,13 @@ static inline void *v4l2_get_subdev_hostdata(const struct v4l2_subdev *sd)
 	return sd->host_priv;
 }
 
+#ifdef CONFIG_MEDIA_CONTROLLER
+int v4l2_subdev_link_validate_default(struct v4l2_subdev *sd,
+				      struct media_link *link,
+				      struct v4l2_subdev_format *source_fmt,
+				      struct v4l2_subdev_format *sink_fmt);
+int v4l2_subdev_link_validate(struct media_link *link);
+#endif /* CONFIG_MEDIA_CONTROLLER */
 void v4l2_subdev_init(struct v4l2_subdev *sd,
 		      const struct v4l2_subdev_ops *ops);
 
@@ -355,5 +522,8 @@ void v4l2_subdev_init(struct v4l2_subdev *sd,
 #define v4l2_subdev_notify(sd, notification, arg)			   \
 	((!(sd) || !(sd)->v4l2_dev || !(sd)->v4l2_dev->notify) ? -ENODEV : \
 	 (sd)->v4l2_dev->notify((sd), (notification), (arg)))
+
+#define v4l2_subdev_has_op(sd, o, f) \
+	((sd)->ops->o && (sd)->ops->o->f)
 
 #endif

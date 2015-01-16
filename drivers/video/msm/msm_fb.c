@@ -24,11 +24,17 @@
 #include <linux/mm.h>
 #include <linux/fb.h>
 #include <linux/msm_mdp.h>
+<<<<<<< HEAD
 #include <linux/init.h>
 #include <linux/kthread.h>
 #include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
+=======
+#include <linux/io.h>
+#include <linux/uaccess.h>
+#include <linux/platform_data/video-msm_fb.h>
+>>>>>>> common/android-3.10.y
 #include <mach/board.h>
 #include <linux/uaccess.h>
 #include <mach/iommu_domains.h>

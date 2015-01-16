@@ -16,12 +16,12 @@
 #include <linux/io.h>
 #include <linux/regulator/krait-regulator.h>
 
-#include <asm/hardware/gic.h>
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
 #include <asm/mach-types.h>
 #include <asm/smp_plat.h>
 
+<<<<<<< HEAD
 #include <mach/socinfo.h>
 #include <mach/hardware.h>
 #include <mach/msm_iomap.h>
@@ -29,18 +29,25 @@
 #include "pm.h"
 #include "scm-boot.h"
 #include "spm.h"
+=======
+#include "scm-boot.h"
+#include "common.h"
+>>>>>>> common/android-3.10.y
 
 #define VDD_SC1_ARRAY_CLAMP_GFS_CTL 0x15A0
 #define SCSS_CPU1CORE_RESET 0xD80
 #define SCSS_DBG_STATUS_CORE_PWRDUP 0xE64
 
 extern void msm_secondary_startup(void);
+<<<<<<< HEAD
 
 /*
  * control for which core is the next to come out of the secondary
  * boot "holding pen".
  */
 volatile int pen_release = -1;
+=======
+>>>>>>> common/android-3.10.y
 
 /*
  * Write pen_release in a way that is guaranteed to be visible to all
@@ -55,6 +62,7 @@ static void __cpuinit write_pen_release(int val)
 	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
 }
 
+<<<<<<< HEAD
 static DEFINE_SPINLOCK(boot_lock);
 
 void __cpuinit platform_secondary_init(unsigned int cpu)
@@ -68,6 +76,10 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 	 */
 	gic_secondary_init(0);
 
+=======
+static void __cpuinit msm_secondary_init(unsigned int cpu)
+{
+>>>>>>> common/android-3.10.y
 	/*
 	 * let the primary processor know we're out of the
 	 * pen, then head off into the C entry point
@@ -169,6 +181,7 @@ static int __cpuinit krait_release_secondary_p3(unsigned long base, int cpu)
 	return 0;
 }
 
+<<<<<<< HEAD
 static int __cpuinit release_secondary(unsigned int cpu)
 {
 	BUG_ON(cpu >= get_core_count());
@@ -199,6 +212,9 @@ static int cold_boot_flags[] = {
 };
 
 int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
+=======
+static int __cpuinit msm_boot_secondary(unsigned int cpu, struct task_struct *idle)
+>>>>>>> common/android-3.10.y
 {
 	int ret;
 	unsigned int flag = 0;
@@ -246,7 +262,7 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 * the boot monitor to read the system wide flags register,
 	 * and branch to the address found there.
 	 */
-	gic_raise_softirq(cpumask_of(cpu), 1);
+	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
@@ -269,7 +285,7 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
  * Initialise the CPU possible map early - this describes the CPUs
  * which may be present or become present in the system.
  */
-void __init smp_init_cpus(void)
+static void __init msm_smp_init_cpus(void)
 {
 	unsigned int i, ncores = get_core_count();
 
@@ -281,10 +297,23 @@ void __init smp_init_cpus(void)
 
 	for (i = 0; i < ncores; i++)
 		set_cpu_possible(i, true);
+<<<<<<< HEAD
 
 	set_smp_cross_call(gic_raise_softirq);
+=======
+>>>>>>> common/android-3.10.y
 }
 
-void __init platform_smp_prepare_cpus(unsigned int max_cpus)
+static void __init msm_smp_prepare_cpus(unsigned int max_cpus)
 {
 }
+
+struct smp_operations msm_smp_ops __initdata = {
+	.smp_init_cpus		= msm_smp_init_cpus,
+	.smp_prepare_cpus	= msm_smp_prepare_cpus,
+	.smp_secondary_init	= msm_secondary_init,
+	.smp_boot_secondary	= msm_boot_secondary,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_die		= msm_cpu_die,
+#endif
+};

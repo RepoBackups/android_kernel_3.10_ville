@@ -1,6 +1,10 @@
 /*
  * Copyright (C) 2007 Google, Inc.
+<<<<<<< HEAD
  * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+=======
+ * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+>>>>>>> common/android-3.10.y
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,11 +26,18 @@
 #include <linux/irq.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+<<<<<<< HEAD
 #include <linux/percpu.h>
 #include <linux/mm.h>
+=======
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
+>>>>>>> common/android-3.10.y
 
 #include <asm/localtimer.h>
 #include <asm/mach/time.h>
+<<<<<<< HEAD
 #include <asm/hardware/gic.h>
 #include <asm/sched_clock.h>
 #include <asm/smp_plat.h>
@@ -82,12 +93,29 @@ enum {
  */
 static int global_timer_offset;
 static int msm_global_timer;
+=======
+#include <asm/localtimer.h>
+#include <asm/sched_clock.h>
+
+#include "common.h"
+
+#define TIMER_MATCH_VAL			0x0000
+#define TIMER_COUNT_VAL			0x0004
+#define TIMER_ENABLE			0x0008
+#define TIMER_ENABLE_CLR_ON_MATCH_EN	BIT(1)
+#define TIMER_ENABLE_EN			BIT(0)
+#define TIMER_CLEAR			0x000C
+#define DGT_CLK_CTL			0x10
+#define DGT_CLK_CTL_DIV_4		0x3
+#define TIMER_STS_GPT0_CLR_PEND		BIT(10)
+>>>>>>> common/android-3.10.y
 
 #define NR_TIMERS ARRAY_SIZE(msm_clocks)
 
 unsigned int gpt_hz = 32768;
 unsigned int sclk_hz = 32768;
 
+<<<<<<< HEAD
 static struct msm_clock *clockevent_to_clock(struct clock_event_device *evt);
 static irqreturn_t msm_timer_interrupt(int irq, void *dev_id);
 static cycle_t msm_gpt_read(struct clocksource *cs);
@@ -197,6 +225,10 @@ static DEFINE_PER_CPU(struct msm_clock_percpu_data[NR_TIMERS],
     msm_clocks_percpu);
 
 static DEFINE_PER_CPU(struct msm_clock *, msm_active_clock);
+=======
+static void __iomem *event_base;
+static void __iomem *sts_base;
+>>>>>>> common/android-3.10.y
 
 static irqreturn_t msm_timer_interrupt(int irq, void *dev_id)
 {
@@ -315,6 +347,20 @@ static int msm_timer_set_next_event(unsigned long cycles,
 	    late < clock->freq*5)
 		return -ETIME;
 
+<<<<<<< HEAD
+=======
+	ctrl &= ~TIMER_ENABLE_EN;
+	writel_relaxed(ctrl, event_base + TIMER_ENABLE);
+
+	writel_relaxed(ctrl, event_base + TIMER_CLEAR);
+	writel_relaxed(cycles, event_base + TIMER_MATCH_VAL);
+
+	if (sts_base)
+		while (readl_relaxed(sts_base) & TIMER_STS_GPT0_CLR_PEND)
+			cpu_relax();
+
+	writel_relaxed(ctrl | TIMER_ENABLE_EN, event_base + TIMER_ENABLE);
+>>>>>>> common/android-3.10.y
 	return 0;
 }
 
@@ -390,7 +436,14 @@ void __iomem *msm_timer_get_timer0_base(void)
 	return MSM_TMR_BASE + global_timer_offset;
 }
 
+<<<<<<< HEAD
 #define MPM_SCLK_COUNT_VAL    0x0024
+=======
+static union {
+	struct clock_event_device *evt;
+	struct clock_event_device * __percpu *percpu_evt;
+} msm_evt;
+>>>>>>> common/android-3.10.y
 
 #ifdef CONFIG_PM
 /*
@@ -965,6 +1018,7 @@ int __cpuinit local_timer_setup(struct clock_event_device *evt)
 	if (!smp_processor_id())
 		return 0;
 
+<<<<<<< HEAD
 	if (cpu_is_msm8x60() || soc_class_is_msm8960() ||
 	    soc_class_is_apq8064() || soc_class_is_msm8930())
 		__raw_writel(DGT_CLK_CTL_DIV_4, MSM_TMR_BASE + DGT_CLK_CTL);
@@ -980,11 +1034,15 @@ int __cpuinit local_timer_setup(struct clock_event_device *evt)
 				;
 	}
 	evt->irq = clock->irq;
+=======
+	evt->irq = msm_clockevent.irq;
+>>>>>>> common/android-3.10.y
 	evt->name = "local_timer";
 	evt->features = CLOCK_EVT_FEAT_ONESHOT;
 	evt->rating = clock->clockevent.rating;
 	evt->set_mode = msm_timer_set_mode;
 	evt->set_next_event = msm_timer_set_next_event;
+<<<<<<< HEAD
 	evt->shift = clock->clockevent.shift;
 	evt->mult = div_sc(clock->freq, NSEC_PER_SEC, evt->shift);
 	evt->max_delta_ns =
@@ -996,6 +1054,12 @@ int __cpuinit local_timer_setup(struct clock_event_device *evt)
 	clockevents_register_device(evt);
 	enable_percpu_irq(evt->irq, IRQ_TYPE_EDGE_RISING);
 
+=======
+
+	*__this_cpu_ptr(msm_evt.percpu_evt) = evt;
+	clockevents_config_and_register(evt, GPT_HZ, 4, 0xf0000000);
+	enable_percpu_irq(evt->irq, IRQ_TYPE_EDGE_RISING);
+>>>>>>> common/android-3.10.y
 	return 0;
 }
 
@@ -1011,10 +1075,21 @@ static struct local_timer_ops msm_lt_ops = {
 };
 #endif /* CONFIG_LOCAL_TIMERS */
 
+<<<<<<< HEAD
 static void __init msm_timer_init(void)
+=======
+static notrace u32 msm_sched_clock_read(void)
+{
+	return msm_clocksource.read(&msm_clocksource);
+}
+
+static void __init msm_timer_init(u32 dgt_hz, int sched_bits, int irq,
+				  bool percpu)
+>>>>>>> common/android-3.10.y
 {
 	int i;
 	int res;
+<<<<<<< HEAD
 	struct irq_chip *chip;
 	struct msm_clock *dgt = &msm_clocks[MSM_CLOCK_DGT];
 	struct msm_clock *gpt = &msm_clocks[MSM_CLOCK_GPT];
@@ -1187,8 +1262,153 @@ static void __init msm_timer_init(void)
 #ifdef CONFIG_LOCAL_TIMERS
 	local_timer_register(&msm_lt_ops);
 #endif
+=======
+
+	ce->cpumask = cpumask_of(0);
+	ce->irq = irq;
+
+	clockevents_config_and_register(ce, GPT_HZ, 4, 0xffffffff);
+	if (percpu) {
+		msm_evt.percpu_evt = alloc_percpu(struct clock_event_device *);
+		if (!msm_evt.percpu_evt) {
+			pr_err("memory allocation failed for %s\n", ce->name);
+			goto err;
+		}
+		*__this_cpu_ptr(msm_evt.percpu_evt) = ce;
+		res = request_percpu_irq(ce->irq, msm_timer_interrupt,
+					 ce->name, msm_evt.percpu_evt);
+		if (!res) {
+			enable_percpu_irq(ce->irq, IRQ_TYPE_EDGE_RISING);
+#ifdef CONFIG_LOCAL_TIMERS
+			local_timer_register(&msm_local_timer_ops);
+#endif
+		}
+	} else {
+		msm_evt.evt = ce;
+		res = request_irq(ce->irq, msm_timer_interrupt,
+				  IRQF_TIMER | IRQF_NOBALANCING |
+				  IRQF_TRIGGER_RISING, ce->name, &msm_evt.evt);
+	}
+
+	if (res)
+		pr_err("request_irq failed for %s\n", ce->name);
+err:
+	writel_relaxed(TIMER_ENABLE_EN, source_base + TIMER_ENABLE);
+	res = clocksource_register_hz(cs, dgt_hz);
+	if (res)
+		pr_err("clocksource_register failed\n");
+	setup_sched_clock(msm_sched_clock_read, sched_bits, dgt_hz);
+>>>>>>> common/android-3.10.y
 }
 
-struct sys_timer msm_timer = {
-	.init = msm_timer_init
+#ifdef CONFIG_OF
+static const struct of_device_id msm_timer_match[] __initconst = {
+	{ .compatible = "qcom,kpss-timer" },
+	{ .compatible = "qcom,scss-timer" },
+	{ },
 };
+
+void __init msm_dt_timer_init(void)
+{
+	struct device_node *np;
+	u32 freq;
+	int irq;
+	struct resource res;
+	u32 percpu_offset;
+	void __iomem *base;
+	void __iomem *cpu0_base;
+
+	np = of_find_matching_node(NULL, msm_timer_match);
+	if (!np) {
+		pr_err("Can't find msm timer DT node\n");
+		return;
+	}
+
+	base = of_iomap(np, 0);
+	if (!base) {
+		pr_err("Failed to map event base\n");
+		return;
+	}
+
+	/* We use GPT0 for the clockevent */
+	irq = irq_of_parse_and_map(np, 1);
+	if (irq <= 0) {
+		pr_err("Can't get irq\n");
+		return;
+	}
+
+	/* We use CPU0's DGT for the clocksource */
+	if (of_property_read_u32(np, "cpu-offset", &percpu_offset))
+		percpu_offset = 0;
+
+	if (of_address_to_resource(np, 0, &res)) {
+		pr_err("Failed to parse DGT resource\n");
+		return;
+	}
+
+	cpu0_base = ioremap(res.start + percpu_offset, resource_size(&res));
+	if (!cpu0_base) {
+		pr_err("Failed to map source base\n");
+		return;
+	}
+
+	if (of_property_read_u32(np, "clock-frequency", &freq)) {
+		pr_err("Unknown frequency\n");
+		return;
+	}
+	of_node_put(np);
+
+	event_base = base + 0x4;
+	sts_base = base + 0x88;
+	source_base = cpu0_base + 0x24;
+	freq /= 4;
+	writel_relaxed(DGT_CLK_CTL_DIV_4, source_base + DGT_CLK_CTL);
+
+	msm_timer_init(freq, 32, irq, !!percpu_offset);
+}
+#endif
+
+static int __init msm_timer_map(phys_addr_t addr, u32 event, u32 source,
+				u32 sts)
+{
+	void __iomem *base;
+
+	base = ioremap(addr, SZ_256);
+	if (!base) {
+		pr_err("Failed to map timer base\n");
+		return -ENOMEM;
+	}
+	event_base = base + event;
+	source_base = base + source;
+	if (sts)
+		sts_base = base + sts;
+
+	return 0;
+}
+
+void __init msm7x01_timer_init(void)
+{
+	struct clocksource *cs = &msm_clocksource;
+
+	if (msm_timer_map(0xc0100000, 0x0, 0x10, 0x0))
+		return;
+	cs->read = msm_read_timer_count_shift;
+	cs->mask = CLOCKSOURCE_MASK((32 - MSM_DGT_SHIFT));
+	/* 600 KHz */
+	msm_timer_init(19200000 >> MSM_DGT_SHIFT, 32 - MSM_DGT_SHIFT, 7,
+			false);
+}
+
+void __init msm7x30_timer_init(void)
+{
+	if (msm_timer_map(0xc0100000, 0x4, 0x24, 0x80))
+		return;
+	msm_timer_init(24576000 / 4, 32, 1, false);
+}
+
+void __init qsd8x50_timer_init(void)
+{
+	if (msm_timer_map(0xAC100000, 0x0, 0x10, 0x34))
+		return;
+	msm_timer_init(19200000 / 4, 32, 7, false);
+}

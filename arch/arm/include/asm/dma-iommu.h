@@ -7,6 +7,10 @@
 #include <linux/scatterlist.h>
 #include <linux/dma-debug.h>
 #include <linux/kmemcheck.h>
+<<<<<<< HEAD
+=======
+#include <linux/kref.h>
+>>>>>>> common/android-3.10.y
 
 struct dma_iommu_mapping {
 	/* iommu specific data */
@@ -29,6 +33,10 @@ void arm_iommu_release_mapping(struct dma_iommu_mapping *mapping);
 
 int arm_iommu_attach_device(struct device *dev,
 					struct dma_iommu_mapping *mapping);
+<<<<<<< HEAD
+=======
+void arm_iommu_detach_device(struct device *dev);
+>>>>>>> common/android-3.10.y
 
 #endif /* __KERNEL__ */
 #endif

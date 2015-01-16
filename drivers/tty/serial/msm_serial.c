@@ -131,6 +131,7 @@ static void msm_enable_ms(struct uart_port *port)
 	msm_write(port, msm_port->imr, UART_IMR);
 }
 
+<<<<<<< HEAD
 #ifdef CONFIG_SERIAL_MSM_CLOCK_CONTROL
 /* turn clock off if TX buffer is empty, otherwise reschedule */
 static enum hrtimer_restart msm_serial_clock_off(struct hrtimer *timer) {
@@ -179,6 +180,19 @@ void msm_serial_clock_request_off(struct uart_port *port) {
 		 */
 		hrtimer_start(&msm_port->clk_off_timer,
 			      msm_port->clk_off_delay, HRTIMER_MODE_REL);
+=======
+static void handle_rx_dm(struct uart_port *port, unsigned int misr)
+{
+	struct tty_port *tport = &port->state->port;
+	unsigned int sr;
+	int count = 0;
+	struct msm_port *msm_port = UART_TO_MSM(port);
+
+	if ((msm_read(port, UART_SR) & UART_SR_OVERRUN)) {
+		port->icount.overrun++;
+		tty_insert_flip_char(tport, 0, TTY_OVERRUN);
+		msm_write(port, UART_CR_CMD_RESET_ERR, UART_CR);
+>>>>>>> common/android-3.10.y
 	}
 	spin_unlock_irqrestore(&port->lock, flags);
 }
@@ -235,6 +249,7 @@ static irqreturn_t msm_rx_irq(int irq, void *dev_id)
 
 	msm_serial_clock_on(port, 0);
 
+<<<<<<< HEAD
 	/* we missed an rx while asleep - it must be a wakeup indicator
 	 */
 	if (inject_wakeup) {
@@ -245,12 +260,25 @@ static irqreturn_t msm_rx_irq(int irq, void *dev_id)
 
 	spin_unlock_irqrestore(&port->lock, flags);
 	return IRQ_HANDLED;
+=======
+		/* TODO: handle sysrq */
+		tty_insert_flip_string(tport, (char *)&c,
+				       (count > 4) ? 4 : count);
+		count -= 4;
+	}
+
+	tty_flip_buffer_push(tport);
+	if (misr & (UART_IMR_RXSTALE))
+		msm_write(port, UART_CR_CMD_RESET_STALE_INT, UART_CR);
+	msm_write(port, 0xFFFFFF, UARTDM_DMRX);
+	msm_write(port, UART_CR_CMD_STALE_EVENT_ENABLE, UART_CR);
+>>>>>>> common/android-3.10.y
 }
 #endif
 
 static void handle_rx(struct uart_port *port)
 {
-	struct tty_struct *tty = port->state->port.tty;
+	struct tty_port *tport = &port->state->port;
 	unsigned int sr;
 
 	/*
@@ -259,7 +287,7 @@ static void handle_rx(struct uart_port *port)
 	 */
 	if ((msm_read(port, UART_SR) & UART_SR_OVERRUN)) {
 		port->icount.overrun++;
-		tty_insert_flip_char(tty, 0, TTY_OVERRUN);
+		tty_insert_flip_char(tport, 0, TTY_OVERRUN);
 		msm_write(port, UART_CR_CMD_RESET_ERR, UART_CR);
 	}
 
@@ -290,10 +318,10 @@ static void handle_rx(struct uart_port *port)
 		}
 
 		if (!uart_handle_sysrq_char(port, c))
-			tty_insert_flip_char(tty, c, flag);
+			tty_insert_flip_char(tport, c, flag);
 	}
 
-	tty_flip_buffer_push(tty);
+	tty_flip_buffer_push(tport);
 }
 
 static void handle_tx(struct uart_port *port)
@@ -1067,8 +1095,13 @@ static int __init msm_uim_probe(struct platform_device *pdev)
 	struct uart_port *port;
 	int irq;
 
+<<<<<<< HEAD
 	if (unlikely(pdev->id < 0 || pdev->id >= UART_NR))
 		return -ENXIO;
+=======
+	if (msm_port->is_uartdm)
+		clk_set_rate(msm_port->clk, 1843200);
+>>>>>>> common/android-3.10.y
 
 	pr_info("msm_uim: detected port #%d\n", pdev->id);
 
@@ -1093,7 +1126,7 @@ static int __init msm_uim_probe(struct platform_device *pdev)
 	return uart_add_one_port(&msm_uart_driver, port);
 }
 
-static int __devexit msm_serial_remove(struct platform_device *pdev)
+static int msm_serial_remove(struct platform_device *pdev)
 {
 	struct msm_port *msm_port = platform_get_drvdata(pdev);
 

@@ -143,11 +143,11 @@ static int usb6fire_comm_write16(struct comm_runtime *rt, u8 request,
 	return ret;
 }
 
-int __devinit usb6fire_comm_init(struct sfire_chip *chip)
+int usb6fire_comm_init(struct sfire_chip *chip)
 {
 	struct comm_runtime *rt = kzalloc(sizeof(struct comm_runtime),
 			GFP_KERNEL);
-	struct urb *urb = &rt->receiver;
+	struct urb *urb;
 	int ret;
 
 	if (!rt)
@@ -159,6 +159,10 @@ int __devinit usb6fire_comm_init(struct sfire_chip *chip)
 		return -ENOMEM;
 	}
 
+<<<<<<< HEAD
+=======
+	urb = &rt->receiver;
+>>>>>>> common/android-3.10.y
 	rt->serial = 1;
 	rt->chip = chip;
 	usb_init_urb(urb);

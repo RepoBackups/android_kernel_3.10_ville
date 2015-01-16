@@ -5,16 +5,28 @@
 
 typedef struct {
 #ifdef CONFIG_CPU_HAS_ASID
+<<<<<<< HEAD
 	u64 id;
 #endif
 	unsigned int kvm_seq;
+=======
+	atomic64_t	id;
+#else
+	int		switch_pending;
+#endif
+	unsigned int	vmalloc_seq;
+>>>>>>> common/android-3.10.y
 	unsigned long	sigpage;
 } mm_context_t;
 
 #ifdef CONFIG_CPU_HAS_ASID
 #define ASID_BITS	8
 #define ASID_MASK	((~0ULL) << ASID_BITS)
+<<<<<<< HEAD
 #define ASID(mm)	((mm)->context.id & ~ASID_MASK)
+=======
+#define ASID(mm)	((mm)->context.id.counter & ~ASID_MASK)
+>>>>>>> common/android-3.10.y
 #else
 #define ASID(mm)	(0)
 #endif
@@ -27,16 +39,9 @@ typedef struct {
  *  modified for 2.6 by Hyok S. Choi <hyok.choi@samsung.com>
  */
 typedef struct {
-	unsigned long		end_brk;
+	unsigned long	end_brk;
 } mm_context_t;
 
 #endif
-
-/*
- * switch_mm() may do a full cache flush over the context switch,
- * so enable interrupts over the context switch to avoid high
- * latency.
- */
-#define __ARCH_WANT_INTERRUPTS_ON_CTXSW
 
 #endif

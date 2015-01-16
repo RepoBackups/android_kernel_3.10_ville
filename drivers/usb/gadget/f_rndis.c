@@ -25,11 +25,14 @@
 #include "u_ether.h"
 #include "rndis.h"
 
+<<<<<<< HEAD
 static bool rndis_multipacket_dl_disable;
 module_param(rndis_multipacket_dl_disable, bool, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(rndis_multipacket_dl_disable,
 	"Disable RNDIS Multi-packet support in DownLink");
 
+=======
+>>>>>>> common/android-3.10.y
 /*
  * This function is an RNDIS Ethernet port -- a Microsoft protocol that's
  * been promoted instead of the standard CDC Ethernet.  The published RNDIS
@@ -71,6 +74,16 @@ MODULE_PARM_DESC(rndis_multipacket_dl_disable,
  *   - MS-Windows drivers sometimes emit undocumented requests.
  */
 
+static unsigned int rndis_dl_max_pkt_per_xfer = 3;
+module_param(rndis_dl_max_pkt_per_xfer, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rndis_dl_max_pkt_per_xfer,
+	"Maximum packets per transfer for DL aggregation");
+
+static unsigned int rndis_ul_max_pkt_per_xfer = 3;
+module_param(rndis_ul_max_pkt_per_xfer, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer,
+       "Maximum packets per transfer for UL aggregation");
+
 struct f_rndis {
 	struct gether			port;
 	u8				ctrl_id, data_id;
@@ -105,7 +118,7 @@ static unsigned int bitrate(struct usb_gadget *g)
 /*
  */
 
-#define LOG2_STATUS_INTERVAL_MSEC	5	/* 1 << 5 == 32 msec */
+#define RNDIS_STATUS_INTERVAL_MS	32
 #define STATUS_BYTECOUNT		8	/* 8 bytes data */
 
 
@@ -194,7 +207,7 @@ static struct usb_endpoint_descriptor fs_notify_desc = {
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
 	.wMaxPacketSize =	cpu_to_le16(STATUS_BYTECOUNT),
-	.bInterval =		1 << LOG2_STATUS_INTERVAL_MSEC,
+	.bInterval =		RNDIS_STATUS_INTERVAL_MS,
 };
 
 static struct usb_endpoint_descriptor fs_in_desc = {
@@ -240,7 +253,7 @@ static struct usb_endpoint_descriptor hs_notify_desc = {
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
 	.wMaxPacketSize =	cpu_to_le16(STATUS_BYTECOUNT),
-	.bInterval =		LOG2_STATUS_INTERVAL_MSEC + 4,
+	.bInterval =		USB_MS_TO_HS_INTERVAL(RNDIS_STATUS_INTERVAL_MS)
 };
 
 static struct usb_endpoint_descriptor hs_in_desc = {
@@ -288,7 +301,7 @@ static struct usb_endpoint_descriptor ss_notify_desc = {
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
 	.wMaxPacketSize =	cpu_to_le16(STATUS_BYTECOUNT),
-	.bInterval =		LOG2_STATUS_INTERVAL_MSEC + 4,
+	.bInterval =		USB_MS_TO_HS_INTERVAL(RNDIS_STATUS_INTERVAL_MS)
 };
 
 static struct usb_ss_ep_comp_descriptor ss_intr_comp_desc = {
@@ -456,6 +469,7 @@ static void rndis_response_complete(struct usb_ep *ep, struct usb_request *req)
 static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct f_rndis			*rndis = req->context;
+<<<<<<< HEAD
 	struct usb_composite_dev	*cdev;
 	int				status;
 	rndis_init_msg_type		*buf;
@@ -464,26 +478,42 @@ static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
 		return;
 	else
 		cdev = rndis->port.func.config->cdev;
+=======
+	int				status;
+	rndis_init_msg_type		*buf;
+>>>>>>> common/android-3.10.y
 
 	/* received RNDIS command from USB_CDC_SEND_ENCAPSULATED_COMMAND */
 //	spin_lock(&dev->lock);
 	status = rndis_msg_parser(rndis->config, (u8 *) req->buf);
 	if (status < 0)
-		ERROR(cdev, "RNDIS command error %d, %d/%d\n",
+		pr_err("RNDIS command error %d, %d/%d\n",
 			status, req->actual, req->length);
 
 	buf = (rndis_init_msg_type *)req->buf;
 
+<<<<<<< HEAD
 	if (buf->MessageType == REMOTE_NDIS_INITIALIZE_MSG) {
+=======
+	if (buf->MessageType == RNDIS_MSG_INIT) {
+>>>>>>> common/android-3.10.y
 		if (buf->MaxTransferSize > 2048)
 			rndis->port.multi_pkt_xfer = 1;
 		else
 			rndis->port.multi_pkt_xfer = 0;
+<<<<<<< HEAD
 		DBG(cdev, "%s: MaxTransferSize: %d : Multi_pkt_txr: %s\n",
 				__func__, buf->MaxTransferSize,
 				rndis->port.multi_pkt_xfer ? "enabled" :
 							    "disabled");
 		if (rndis_multipacket_dl_disable)
+=======
+		pr_info("%s: MaxTransferSize: %d : Multi_pkt_txr: %s\n",
+				__func__, buf->MaxTransferSize,
+				rndis->port.multi_pkt_xfer ? "enabled" :
+							    "disabled");
+		if (rndis_dl_max_pkt_per_xfer <= 1)
+>>>>>>> common/android-3.10.y
 			rndis->port.multi_pkt_xfer = 0;
 	}
 //	spin_unlock(&dev->lock);
@@ -669,7 +699,7 @@ static void rndis_open(struct gether *geth)
 
 	DBG(cdev, "%s\n", __func__);
 
-	rndis_set_param_medium(rndis->config, NDIS_MEDIUM_802_3,
+	rndis_set_param_medium(rndis->config, RNDIS_MEDIUM_802_3,
 				bitrate(cdev->gadget) / 100);
 	rndis_signal_connect(rndis->config);
 }
@@ -680,7 +710,7 @@ static void rndis_close(struct gether *geth)
 
 	DBG(geth->func.config->cdev, "%s\n", __func__);
 
-	rndis_set_param_medium(rndis->config, NDIS_MEDIUM_802_3, 0);
+	rndis_set_param_medium(rndis->config, RNDIS_MEDIUM_802_3, 0);
 	rndis_signal_disconnect(rndis->config);
 }
 
@@ -752,42 +782,22 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	rndis->notify_req->context = rndis;
 	rndis->notify_req->complete = rndis_response_complete;
 
-	/* copy descriptors, and track endpoint copies */
-	f->descriptors = usb_copy_descriptors(eth_fs_function);
-	if (!f->descriptors)
-		goto fail;
-
 	/* support all relevant hardware speeds... we expect that when
 	 * hardware is dual speed, all bulk-capable endpoints work at
 	 * both speeds
 	 */
-	if (gadget_is_dualspeed(c->cdev->gadget)) {
-		hs_in_desc.bEndpointAddress =
-				fs_in_desc.bEndpointAddress;
-		hs_out_desc.bEndpointAddress =
-				fs_out_desc.bEndpointAddress;
-		hs_notify_desc.bEndpointAddress =
-				fs_notify_desc.bEndpointAddress;
+	hs_in_desc.bEndpointAddress = fs_in_desc.bEndpointAddress;
+	hs_out_desc.bEndpointAddress = fs_out_desc.bEndpointAddress;
+	hs_notify_desc.bEndpointAddress = fs_notify_desc.bEndpointAddress;
 
-		/* copy descriptors, and track endpoint copies */
-		f->hs_descriptors = usb_copy_descriptors(eth_hs_function);
-		if (!f->hs_descriptors)
-			goto fail;
-	}
+	ss_in_desc.bEndpointAddress = fs_in_desc.bEndpointAddress;
+	ss_out_desc.bEndpointAddress = fs_out_desc.bEndpointAddress;
+	ss_notify_desc.bEndpointAddress = fs_notify_desc.bEndpointAddress;
 
-	if (gadget_is_superspeed(c->cdev->gadget)) {
-		ss_in_desc.bEndpointAddress =
-				fs_in_desc.bEndpointAddress;
-		ss_out_desc.bEndpointAddress =
-				fs_out_desc.bEndpointAddress;
-		ss_notify_desc.bEndpointAddress =
-				fs_notify_desc.bEndpointAddress;
-
-		/* copy descriptors, and track endpoint copies */
-		f->ss_descriptors = usb_copy_descriptors(eth_ss_function);
-		if (!f->ss_descriptors)
-			goto fail;
-	}
+	status = usb_assign_descriptors(f, eth_fs_function, eth_hs_function,
+			eth_ss_function);
+	if (status)
+		goto fail;
 
 	rndis->port.open = rndis_open;
 	rndis->port.close = rndis_close;
@@ -797,8 +807,9 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	rndis->config = status;
 
-	rndis_set_param_medium(rndis->config, NDIS_MEDIUM_802_3, 0);
+	rndis_set_param_medium(rndis->config, RNDIS_MEDIUM_802_3, 0);
 	rndis_set_host_mac(rndis->config, rndis->ethaddr);
+	rndis_set_max_pkt_xfer(rndis->config, rndis_ul_max_pkt_per_xfer);
 
 	if (rndis->manufacturer && rndis->vendorID &&
 			rndis_set_param_vendor(rndis->config, rndis->vendorID,
@@ -818,12 +829,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	return 0;
 
 fail:
-	if (gadget_is_superspeed(c->cdev->gadget) && f->ss_descriptors)
-		usb_free_descriptors(f->ss_descriptors);
-	if (gadget_is_dualspeed(c->cdev->gadget) && f->hs_descriptors)
-		usb_free_descriptors(f->hs_descriptors);
-	if (f->descriptors)
-		usb_free_descriptors(f->descriptors);
+	usb_free_all_descriptors(f);
 
 	if (rndis->notify_req) {
 		kfree(rndis->notify_req->buf);
@@ -851,11 +857,8 @@ rndis_unbind(struct usb_configuration *c, struct usb_function *f)
 	rndis_deregister(rndis->config);
 	rndis_exit();
 
-	if (gadget_is_superspeed(c->cdev->gadget))
-		usb_free_descriptors(f->ss_descriptors);
-	if (gadget_is_dualspeed(c->cdev->gadget))
-		usb_free_descriptors(f->hs_descriptors);
-	usb_free_descriptors(f->descriptors);
+	rndis_string_defs[0].id = 0;
+	usb_free_all_descriptors(f);
 
 	kfree(rndis->notify_req->buf);
 	usb_ep_free_request(rndis->notify, rndis->notify_req);
@@ -870,20 +873,9 @@ static inline bool can_support_rndis(struct usb_configuration *c)
 	return true;
 }
 
-/**
- * rndis_bind_config - add RNDIS network link to a configuration
- * @c: the configuration to support the network link
- * @ethaddr: a buffer in which the ethernet address of the host side
- *	side of the link was recorded
- * Context: single threaded during gadget setup
- *
- * Returns zero on success, else negative errno.
- *
- * Caller must have called @gether_setup().  Caller is also responsible
- * for calling @gether_cleanup() before module unload.
- */
 int
-rndis_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
+rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
+		u32 vendorID, const char *manufacturer, struct eth_dev *dev)
 {
 	return rndis_bind_config_vendor(c, ethaddr, 0, NULL);
 }
@@ -902,6 +894,7 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 	status = rndis_init();
 	if (status < 0)
 		return status;
+<<<<<<< HEAD
 
 	/* maybe allocate device-global string IDs */
 	if (rndis_string_defs[0].id == 0) {
@@ -912,20 +905,17 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 			return status;
 		rndis_string_defs[0].id = status;
 		rndis_control_intf.iInterface = status;
+=======
+>>>>>>> common/android-3.10.y
 
-		/* data interface label */
-		status = usb_string_id(c->cdev);
-		if (status < 0)
+	if (rndis_string_defs[0].id == 0) {
+		status = usb_string_ids_tab(c->cdev, rndis_string_defs);
+		if (status)
 			return status;
-		rndis_string_defs[1].id = status;
-		rndis_data_intf.iInterface = status;
 
-		/* IAD iFunction label */
-		status = usb_string_id(c->cdev);
-		if (status < 0)
-			return status;
-		rndis_string_defs[2].id = status;
-		rndis_iad_descriptor.iFunction = status;
+		rndis_control_intf.iInterface = rndis_string_defs[0].id;
+		rndis_data_intf.iInterface = rndis_string_defs[1].id;
+		rndis_iad_descriptor.iFunction = rndis_string_defs[2].id;
 	}
 
 	/* allocate and initialize one new instance */
@@ -938,6 +928,7 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 	rndis->vendorID = vendorID;
 	rndis->manufacturer = manufacturer;
 
+	rndis->port.ioport = dev;
 	/* RNDIS activates when the host changes this filter */
 	rndis->port.cdc_filter = 0;
 
@@ -945,6 +936,8 @@ rndis_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 	rndis->port.header_len = sizeof(struct rndis_packet_msg_type);
 	rndis->port.wrap = rndis_add_header;
 	rndis->port.unwrap = rndis_rm_hdr;
+	rndis->port.ul_max_pkts_per_xfer = rndis_ul_max_pkt_per_xfer;
+	rndis->port.dl_max_pkts_per_xfer = rndis_dl_max_pkt_per_xfer;
 
 	rndis->port.func.name = "rndis";
 	rndis->port.func.strings = rndis_strings;

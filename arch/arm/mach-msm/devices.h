@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include "clock.h"
 
+<<<<<<< HEAD
 void __init msm9615_device_init(void);
 void __init msm9615_map_io(void);
 void __init msm_map_msm9615_io(void);
@@ -42,6 +43,12 @@ extern struct platform_device msm_ebi0_thermal;
 extern struct platform_device msm_ebi1_thermal;
 
 extern struct platform_device msm_adsp_device;
+=======
+extern struct platform_device msm_device_gpio_7201;
+extern struct platform_device msm_device_gpio_7x30;
+extern struct platform_device msm_device_gpio_8x50;
+
+>>>>>>> common/android-3.10.y
 extern struct platform_device msm_device_uart1;
 extern struct platform_device msm_device_uart2;
 extern struct platform_device msm_device_uart3;

@@ -13,7 +13,6 @@
 
 #include <linux/kernel.h>
 #include <linux/irq.h>
-#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/android_pmem.h>
 #include <linux/bootmem.h>
@@ -1529,6 +1528,7 @@ static void config_camera_off_gpios(void)
 {
 	int vreg_en = 0;
 
+<<<<<<< HEAD
 	if (machine_is_qsd8x50_ffa()) {
 		config_gpio_table(camera_off_gpio_ffa_table,
 		ARRAY_SIZE(camera_off_gpio_ffa_table));
@@ -1576,6 +1576,19 @@ static struct msm_camera_sensor_flash_src msm_flash_src = {
 	._fsrc.pmic_src.led_src_2 = 0,
 	._fsrc.pmic_src.pmic_set_current = pmic_set_flash_led_current,
 };
+=======
+#include <mach/board.h>
+#include <mach/irqs.h>
+#include <mach/sirc.h>
+#include <mach/vreg.h>
+#include <linux/platform_data/mmc-msm_sdcc.h>
+
+#include "devices.h"
+#include "common.h"
+
+static const resource_size_t qsd8x50_surf_smc91x_base __initconst = 0x70000300;
+static const unsigned        qsd8x50_surf_smc91x_gpio __initconst = 156;
+>>>>>>> common/android-3.10.y
 
 #ifdef CONFIG_MT9D112
 static struct msm_camera_sensor_flash_data flash_mt9d112 = {
@@ -1774,9 +1787,14 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 static struct msm_hsusb_gadget_platform_data msm_gadget_pdata;
 
 static struct platform_device *devices[] __initdata = {
+<<<<<<< HEAD
 	&msm_fb_device,
 	&mddi_toshiba_device,
 	&smc91x_device,
+=======
+	&msm_device_gpio_8x50,
+	&msm_device_uart3,
+>>>>>>> common/android-3.10.y
 	&msm_device_smd,
 	&msm_device_dmov,
 	&android_pmem_kernel_ebi1_device,
@@ -2526,12 +2544,18 @@ static void __init qsd8x50_map_io(void)
 		       __func__);
 }
 
+static void __init qsd8x50_init_late(void)
+{
+	smd_debugfs_init();
+}
+
 MACHINE_START(QSD8X50_SURF, "QCT QSD8X50 SURF")
 	.atag_offset = 0x100,
 	.map_io = qsd8x50_map_io,
 	.init_irq = qsd8x50_init_irq,
 	.init_machine = qsd8x50_init,
-	.timer = &msm_timer,
+	.init_late = qsd8x50_init_late,
+	.init_time	= qsd8x50_timer_init,
 MACHINE_END
 
 MACHINE_START(QSD8X50_FFA, "QCT QSD8X50 FFA")
@@ -2539,5 +2563,6 @@ MACHINE_START(QSD8X50_FFA, "QCT QSD8X50 FFA")
 	.map_io = qsd8x50_map_io,
 	.init_irq = qsd8x50_init_irq,
 	.init_machine = qsd8x50_init,
-	.timer = &msm_timer,
+	.init_late = qsd8x50_init_late,
+	.init_time	= qsd8x50_timer_init,
 MACHINE_END

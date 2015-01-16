@@ -14,8 +14,9 @@
 #ifndef __ASMARM_SETUP_H
 #define __ASMARM_SETUP_H
 
-#include <linux/types.h>
+#include <uapi/asm/setup.h>
 
+<<<<<<< HEAD
 #define COMMAND_LINE_SIZE 1024
 
 #ifdef CONFIG_MACH_HTC
@@ -227,6 +228,8 @@ struct tagtable {
 	for (t = base; t->hdr.size; t = tag_next(t))
 
 #ifdef __KERNEL__
+=======
+>>>>>>> common/android-3.10.y
 
 #define __tag __used __attribute__((__section__(".taglist.init")))
 #define __tagtable(tag, fn) \
@@ -239,7 +242,7 @@ static const struct tagtable __tagtable_##fn __tag = { tag, fn }
 
 struct membank {
 	phys_addr_t start;
-	unsigned long size;
+	phys_addr_t size;
 	unsigned int highmem;
 };
 
@@ -261,10 +264,8 @@ extern struct meminfo meminfo;
 #define bank_phys_end(bank)	((bank)->start + (bank)->size)
 #define bank_phys_size(bank)	(bank)->size
 
-extern int arm_add_memory(phys_addr_t start, unsigned long size);
+extern int arm_add_memory(phys_addr_t start, phys_addr_t size);
 extern void early_print(const char *str, ...);
 extern void dump_machine_table(void);
-
-#endif  /*  __KERNEL__  */
 
 #endif

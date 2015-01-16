@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 config ARM_GIC
 	select IRQ_DOMAIN
 	select MULTI_IRQ_HANDLER
@@ -26,6 +27,8 @@ config ARM_VIC_NR
 	  The maximum number of VICs available in the system, for
 	  power management.
 
+=======
+>>>>>>> common/android-3.10.y
 config ICST
 	bool
 
@@ -49,6 +52,7 @@ config SHARP_SCOOP
 config FIQ_GLUE
 	bool
 	select FIQ
+<<<<<<< HEAD
 
 config FIQ_DEBUGGER
 	bool "FIQ Mode Serial Debugger"
@@ -95,3 +99,5 @@ config FIQ_DEBUGGER_CONSOLE_DEFAULT_ENABLE
 	help
 	  If enabled, this puts the fiq debugger into console mode by default.
 	  Otherwise, the fiq debugger will start out in debug mode.
+=======
+>>>>>>> common/android-3.10.y

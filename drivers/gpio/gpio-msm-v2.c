@@ -16,8 +16,13 @@
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/irqchip/chained_irq.h>
 #include <linux/irq.h>
 
+<<<<<<< HEAD
+=======
+#include <mach/msm_gpiomux.h>
+>>>>>>> common/android-3.10.y
 #include <mach/msm_iomap.h>
 #include <mach/gpiomux.h>
 #include "gpio-msm-common.h"
@@ -137,12 +142,34 @@ unsigned __msm_gpio_get_intr_status(unsigned gpio)
 
 void __msm_gpio_set_intr_status(unsigned gpio)
 {
+<<<<<<< HEAD
 	__raw_writel(BIT(INTR_STATUS_BIT), GPIO_INTR_STATUS(gpio));
+=======
+	int gpio = msm_irq_to_gpio(&msm_gpio.gpio_chip, d->irq);
+	unsigned long irq_flags;
+
+	spin_lock_irqsave(&tlmm_lock, irq_flags);
+	writel(TARGET_PROC_NONE, GPIO_INTR_CFG_SU(gpio));
+	clear_gpio_bits(BIT(INTR_RAW_STATUS_EN) | BIT(INTR_ENABLE), GPIO_INTR_CFG(gpio));
+	__clear_bit(gpio, msm_gpio.enabled_irqs);
+	spin_unlock_irqrestore(&tlmm_lock, irq_flags);
+>>>>>>> common/android-3.10.y
 }
 
 unsigned __msm_gpio_get_intr_config(unsigned gpio)
 {
+<<<<<<< HEAD
 	return __raw_readl(GPIO_INTR_CFG(gpio));
+=======
+	int gpio = msm_irq_to_gpio(&msm_gpio.gpio_chip, d->irq);
+	unsigned long irq_flags;
+
+	spin_lock_irqsave(&tlmm_lock, irq_flags);
+	__set_bit(gpio, msm_gpio.enabled_irqs);
+	set_gpio_bits(BIT(INTR_RAW_STATUS_EN) | BIT(INTR_ENABLE), GPIO_INTR_CFG(gpio));
+	writel(TARGET_PROC_SCORPION, GPIO_INTR_CFG_SU(gpio));
+	spin_unlock_irqrestore(&tlmm_lock, irq_flags);
+>>>>>>> common/android-3.10.y
 }
 
 void __msm_gpio_set_intr_cfg_enable(unsigned gpio, unsigned val)
@@ -157,13 +184,29 @@ void __msm_gpio_set_intr_cfg_enable(unsigned gpio, unsigned val)
 
 unsigned  __msm_gpio_get_intr_cfg_enable(unsigned gpio)
 {
+<<<<<<< HEAD
 	return __msm_gpio_get_intr_config(gpio) & INTR_ENABLE;
+=======
+	unsigned long i;
+	struct irq_chip *chip = irq_desc_get_chip(desc);
+
+	chained_irq_enter(chip, desc);
+
+	for_each_set_bit(i, msm_gpio.enabled_irqs, NR_GPIO_IRQS) {
+		if (readl(GPIO_INTR_STATUS(i)) & BIT(INTR_STATUS))
+			generic_handle_irq(msm_gpio_to_irq(&msm_gpio.gpio_chip,
+							   i));
+	}
+
+	chained_irq_exit(chip, desc);
+>>>>>>> common/android-3.10.y
 }
 
 void __msm_gpio_set_intr_cfg_type(unsigned gpio, unsigned type)
 {
 	unsigned cfg;
 
+<<<<<<< HEAD
 	/* RAW_STATUS_EN is left on for all gpio irqs. Due to the
 	 * internal circuitry of TLMM, toggling the RAW_STATUS
 	 * could cause the INTR_STATUS to be set for EDGE interrupts.
@@ -172,6 +215,11 @@ void __msm_gpio_set_intr_cfg_type(unsigned gpio, unsigned type)
 	cfg |= INTR_RAW_STATUS_EN;
 	__raw_writel(cfg, GPIO_INTR_CFG(gpio));
 	__raw_writel(TARGET_PROC_SCORPION, GPIO_INTR_CFG_SU(gpio));
+=======
+static int msm_gpio_probe(struct platform_device *dev)
+{
+	int i, irq, ret;
+>>>>>>> common/android-3.10.y
 
 	cfg  = __msm_gpio_get_intr_config(gpio);
 	if (type & IRQ_TYPE_EDGE_BOTH)
@@ -193,7 +241,11 @@ void __msm_gpio_set_intr_cfg_type(unsigned gpio, unsigned type)
 	udelay(5);
 }
 
+<<<<<<< HEAD
 void __gpio_tlmm_config(unsigned config)
+=======
+static int msm_gpio_remove(struct platform_device *dev)
+>>>>>>> common/android-3.10.y
 {
 	uint32_t flags;
 	unsigned gpio = GPIO_PIN(config);
@@ -205,8 +257,26 @@ void __gpio_tlmm_config(unsigned config)
 	__raw_writel(flags, GPIO_CONFIG(gpio));
 }
 
+<<<<<<< HEAD
 void __msm_gpio_install_direct_irq(unsigned gpio, unsigned irq,
 					unsigned int input_polarity)
+=======
+static struct platform_driver msm_gpio_driver = {
+	.probe = msm_gpio_probe,
+	.remove = msm_gpio_remove,
+	.driver = {
+		.name = "msmgpio",
+		.owner = THIS_MODULE,
+	},
+};
+
+static struct platform_device msm_device_gpio = {
+	.name = "msmgpio",
+	.id   = -1,
+};
+
+static int __init msm_gpio_init(void)
+>>>>>>> common/android-3.10.y
 {
 	uint32_t bits;
 

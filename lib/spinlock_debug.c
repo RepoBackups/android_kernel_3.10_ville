@@ -108,7 +108,11 @@ static inline void debug_spin_unlock(raw_spinlock_t *lock)
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
 	u64 i;
+<<<<<<< HEAD
 	u64 loops = (loops_per_jiffy * HZ);
+=======
+	u64 loops = loops_per_jiffy * HZ;
+>>>>>>> common/android-3.10.y
 
 	for (i = 0; i < loops; i++) {
 		if (arch_spin_trylock(&lock->raw_lock))
@@ -116,7 +120,11 @@ static void __spin_lock_debug(raw_spinlock_t *lock)
 		__delay(1);
 	}
 	/* lockup suspected: */
+<<<<<<< HEAD
 	spin_dump(lock, "lockup");
+=======
+	spin_dump(lock, "lockup suspected");
+>>>>>>> common/android-3.10.y
 #ifdef CONFIG_SMP
 	trigger_all_cpu_backtrace();
 #endif

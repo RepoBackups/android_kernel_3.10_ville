@@ -27,7 +27,11 @@
 /*
  * glue for the proc_comm interface
  */
+<<<<<<< HEAD
 static int pc_clk_enable(struct clk *clk)
+=======
+static int pc_clk_enable(unsigned id)
+>>>>>>> common/android-3.10.y
 {
 	int rc;
 	int id = to_pcom_clk(clk)->id;
@@ -43,7 +47,11 @@ static int pc_clk_enable(struct clk *clk)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static void pc_clk_disable(struct clk *clk)
+=======
+static void pc_clk_disable(unsigned id)
+>>>>>>> common/android-3.10.y
 {
 	int id = to_pcom_clk(clk)->id;
 
@@ -69,6 +77,7 @@ int pc_clk_reset(unsigned id, enum clk_reset_action action)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static int pc_reset(struct clk *clk, enum clk_reset_action action)
 {
 	int id = to_pcom_clk(clk)->id;
@@ -76,6 +85,9 @@ static int pc_reset(struct clk *clk, enum clk_reset_action action)
 }
 
 static int _pc_clk_set_rate(struct clk *clk, unsigned long rate)
+=======
+static int pc_clk_set_rate(unsigned id, unsigned rate)
+>>>>>>> common/android-3.10.y
 {
 	/* The rate _might_ be rounded off to the nearest KHz value by the
 	 * remote function. So a return value of 0 doesn't necessarily mean
@@ -90,7 +102,11 @@ static int _pc_clk_set_rate(struct clk *clk, unsigned long rate)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static int _pc_clk_set_min_rate(struct clk *clk, unsigned long rate)
+=======
+static int pc_clk_set_min_rate(unsigned id, unsigned rate)
+>>>>>>> common/android-3.10.y
 {
 	int rc;
 	int id = to_pcom_clk(clk)->id;
@@ -106,6 +122,7 @@ static int _pc_clk_set_min_rate(struct clk *clk, unsigned long rate)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static int pc_clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	if (clk->flags & CLKFLAG_MIN)
@@ -115,6 +132,9 @@ static int pc_clk_set_rate(struct clk *clk, unsigned long rate)
 }
 
 static int pc_clk_set_max_rate(struct clk *clk, unsigned long rate)
+=======
+static int pc_clk_set_max_rate(unsigned id, unsigned rate)
+>>>>>>> common/android-3.10.y
 {
 	int id = to_pcom_clk(clk)->id;
 	unsigned r = rate;
@@ -125,7 +145,11 @@ static int pc_clk_set_max_rate(struct clk *clk, unsigned long rate)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static int pc_clk_set_flags(struct clk *clk, unsigned flags)
+=======
+static int pc_clk_set_flags(unsigned id, unsigned flags)
+>>>>>>> common/android-3.10.y
 {
 	int id = to_pcom_clk(clk)->id;
 	int rc = msm_proc_comm(PCOM_CLKCTL_RPC_SET_FLAGS, &id, &flags);
@@ -135,7 +159,11 @@ static int pc_clk_set_flags(struct clk *clk, unsigned flags)
 		return (int)id < 0 ? -EINVAL : 0;
 }
 
+<<<<<<< HEAD
 static int pc_clk_set_ext_config(struct clk *clk, unsigned long config)
+=======
+static unsigned pc_clk_get_rate(unsigned id)
+>>>>>>> common/android-3.10.y
 {
 	int id = to_pcom_clk(clk)->id;
 	unsigned c = config;
@@ -155,7 +183,11 @@ static unsigned long pc_clk_get_rate(struct clk *clk)
 		return id;
 }
 
+<<<<<<< HEAD
 static int pc_clk_is_enabled(struct clk *clk)
+=======
+static unsigned pc_clk_is_enabled(unsigned id)
+>>>>>>> common/android-3.10.y
 {
 	int id = to_pcom_clk(clk)->id;
 	if (msm_proc_comm(PCOM_CLKCTL_RPC_ENABLED, &id, NULL))
@@ -164,7 +196,11 @@ static int pc_clk_is_enabled(struct clk *clk)
 		return id;
 }
 
+<<<<<<< HEAD
 static long pc_clk_round_rate(struct clk *clk, unsigned long rate)
+=======
+static long pc_clk_round_rate(unsigned id, unsigned rate)
+>>>>>>> common/android-3.10.y
 {
 
 	/* Not really supported; pc_clk_set_rate() does rounding on it's own. */

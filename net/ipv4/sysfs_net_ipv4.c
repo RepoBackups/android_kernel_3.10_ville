@@ -53,9 +53,12 @@ CREATE_IPV4_FILE(tcp_rmem_min, sysctl_tcp_rmem[0]);
 CREATE_IPV4_FILE(tcp_rmem_def, sysctl_tcp_rmem[1]);
 CREATE_IPV4_FILE(tcp_rmem_max, sysctl_tcp_rmem[2]);
 
+<<<<<<< HEAD
 CREATE_IPV4_FILE(tcp_delack_seg, sysctl_tcp_delack_seg);
 CREATE_IPV4_FILE(tcp_use_userconfig, sysctl_tcp_use_userconfig);
 
+=======
+>>>>>>> common/android-3.10.y
 static struct attribute *ipv4_attrs[] = {
 	&tcp_wmem_min_attr.attr,
 	&tcp_wmem_def_attr.attr,
@@ -63,8 +66,11 @@ static struct attribute *ipv4_attrs[] = {
 	&tcp_rmem_min_attr.attr,
 	&tcp_rmem_def_attr.attr,
 	&tcp_rmem_max_attr.attr,
+<<<<<<< HEAD
 	&tcp_delack_seg_attr.attr,
 	&tcp_use_userconfig_attr.attr,
+=======
+>>>>>>> common/android-3.10.y
 	NULL
 };
 

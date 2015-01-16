@@ -99,6 +99,7 @@
 #define MSM8960_HDMI_SIZE		SZ_4K
 
 #ifdef CONFIG_DEBUG_MSM8960_UART
+<<<<<<< HEAD
 #ifdef CONFIG_MACH_HTC
 #define MSM_DEBUG_UART_BASE		IOMEM(0xFEC40000)
 #define MSM_DEBUG_UART_PHYS		0x1A040000
@@ -137,4 +138,10 @@ extern void msm_map_msm8960_io(void);
 
 #define MSM_SHARED_RAM_PHYS		0x80000000
 
+=======
+#define MSM_DEBUG_UART_BASE	0xF0040000
+#define MSM_DEBUG_UART_PHYS	0x16440000
+#endif
+
+>>>>>>> common/android-3.10.y
 #endif

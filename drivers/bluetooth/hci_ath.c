@@ -93,8 +93,31 @@ struct ath_struct {
 
 static void hostwake_interrupt(unsigned long data)
 {
+<<<<<<< HEAD
 	BT_INFO(" wakeup host\n");
 }
+=======
+	struct ktermios ktermios;
+	int status = tty->driver->ops->tiocmget(tty);
+
+	if (status & TIOCM_CTS)
+		return status;
+
+	/* Disable Automatic RTSCTS */
+	ktermios = tty->termios;
+	ktermios.c_cflag &= ~CRTSCTS;
+	tty_set_termios(tty, &ktermios);
+
+	/* Clear RTS first */
+	status = tty->driver->ops->tiocmget(tty);
+	tty->driver->ops->tiocmset(tty, 0x00, TIOCM_RTS);
+	mdelay(20);
+
+	/* Set RTS, wake up board */
+	status = tty->driver->ops->tiocmget(tty);
+	tty->driver->ops->tiocmset(tty, TIOCM_RTS, 0x00);
+	mdelay(20);
+>>>>>>> common/android-3.10.y
 
 static void modify_timer_task(void)
 {

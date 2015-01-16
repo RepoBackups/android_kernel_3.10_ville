@@ -15,57 +15,11 @@
 #ifndef _LINUX_RNDIS_H
 #define _LINUX_RNDIS_H
 
+#include <linux/rndis.h>
 #include "ndis.h"
 
 #define RNDIS_MAXIMUM_FRAME_SIZE	1518
 #define RNDIS_MAX_TOTAL_SIZE		1558
-
-/* Remote NDIS Versions */
-#define RNDIS_MAJOR_VERSION		1
-#define RNDIS_MINOR_VERSION		0
-
-/* Status Values */
-#define RNDIS_STATUS_SUCCESS		0x00000000U	/* Success           */
-#define RNDIS_STATUS_FAILURE		0xC0000001U	/* Unspecified error */
-#define RNDIS_STATUS_INVALID_DATA	0xC0010015U	/* Invalid data      */
-#define RNDIS_STATUS_NOT_SUPPORTED	0xC00000BBU	/* Unsupported request */
-#define RNDIS_STATUS_MEDIA_CONNECT	0x4001000BU	/* Device connected  */
-#define RNDIS_STATUS_MEDIA_DISCONNECT	0x4001000CU	/* Device disconnected */
-/* For all not specified status messages:
- * RNDIS_STATUS_Xxx -> NDIS_STATUS_Xxx
- */
-
-/* Message Set for Connectionless (802.3) Devices */
-#define REMOTE_NDIS_PACKET_MSG		0x00000001U
-#define REMOTE_NDIS_INITIALIZE_MSG	0x00000002U	/* Initialize device */
-#define REMOTE_NDIS_HALT_MSG		0x00000003U
-#define REMOTE_NDIS_QUERY_MSG		0x00000004U
-#define REMOTE_NDIS_SET_MSG		0x00000005U
-#define REMOTE_NDIS_RESET_MSG		0x00000006U
-#define REMOTE_NDIS_INDICATE_STATUS_MSG	0x00000007U
-#define REMOTE_NDIS_KEEPALIVE_MSG	0x00000008U
-
-/* Message completion */
-#define REMOTE_NDIS_INITIALIZE_CMPLT	0x80000002U
-#define REMOTE_NDIS_QUERY_CMPLT		0x80000004U
-#define REMOTE_NDIS_SET_CMPLT		0x80000005U
-#define REMOTE_NDIS_RESET_CMPLT		0x80000006U
-#define REMOTE_NDIS_KEEPALIVE_CMPLT	0x80000008U
-
-/* Device Flags */
-#define RNDIS_DF_CONNECTIONLESS		0x00000001U
-#define RNDIS_DF_CONNECTION_ORIENTED	0x00000002U
-
-#define RNDIS_MEDIUM_802_3		0x00000000U
-
-/* from drivers/net/sk98lin/h/skgepnmi.h */
-#define OID_PNP_CAPABILITIES			0xFD010100
-#define OID_PNP_SET_POWER			0xFD010101
-#define OID_PNP_QUERY_POWER			0xFD010102
-#define OID_PNP_ADD_WAKE_UP_PATTERN		0xFD010103
-#define OID_PNP_REMOVE_WAKE_UP_PATTERN		0xFD010104
-#define OID_PNP_ENABLE_WAKE_UP			0xFD010106
-
 
 typedef struct rndis_init_msg_type
 {
@@ -251,6 +205,7 @@ int  rndis_set_param_dev (u8 configNr, struct net_device *dev,
 int  rndis_set_param_vendor (u8 configNr, u32 vendorID,
 			    const char *vendorDescr);
 int  rndis_set_param_medium (u8 configNr, u32 medium, u32 speed);
+void rndis_set_max_pkt_xfer(u8 configNr, u8 max_pkt_per_xfer);
 void rndis_add_hdr (struct sk_buff *skb);
 int rndis_rm_hdr(struct gether *port, struct sk_buff *skb,
 			struct sk_buff_head *list);

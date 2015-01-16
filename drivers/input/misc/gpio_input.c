@@ -20,6 +20,7 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
+<<<<<<< HEAD
 #include <linux/wakelock.h>
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
@@ -138,6 +139,9 @@ static ssize_t vol_wakeup_show(struct device *dev,
 
 static DEVICE_ATTR(vol_wakeup, 0664, vol_wakeup_show, vol_wakeup_store);
 #endif /* CONFIG_HTC_WAKE_ON_VOL */
+=======
+#include <linux/pm_wakeup.h>
+>>>>>>> common/android-3.10.y
 
 enum {
 	DEBOUNCE_UNSTABLE     = BIT(0),	/* Got irq, while debouncing */
@@ -162,7 +166,11 @@ struct gpio_input_state {
 	int use_irq;
 	int debounce_count;
 	spinlock_t irq_lock;
+<<<<<<< HEAD
 	struct wake_lock wake_lock;
+=======
+	struct wakeup_source *ws;
+>>>>>>> common/android-3.10.y
 	struct gpio_key_state key_state[0];
 };
 
@@ -247,9 +255,12 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 			pr_info("gpio_keys_scan_keys: key %x-%x, %d (%d) "
 				"changed to %d\n", ds->info->type,
 				key_entry->code, i, key_entry->gpio, pressed);
+<<<<<<< HEAD
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 		handle_power_key_state(key_entry->code, pressed);
 #endif
+=======
+>>>>>>> common/android-3.10.y
 		input_event(ds->input_devs->dev[key_entry->dev], ds->info->type,
 			    key_entry->code, pressed);
 		sync_needed = true;
@@ -273,7 +284,11 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 	else if (!ds->use_irq)
 		hrtimer_start(timer, ds->info->poll_time, HRTIMER_MODE_REL);
 	else
+<<<<<<< HEAD
 		wake_unlock(&ds->wake_lock);
+=======
+		__pm_relax(ds->ws);
+>>>>>>> common/android-3.10.y
 
 	spin_unlock_irqrestore(&ds->irq_lock, irqflags);
 
@@ -299,7 +314,11 @@ static irqreturn_t gpio_event_input_irq_handler(int irq, void *dev_id)
 		if (ks->debounce & DEBOUNCE_WAIT_IRQ) {
 			ks->debounce = DEBOUNCE_UNKNOWN;
 			if (ds->debounce_count++ == 0) {
+<<<<<<< HEAD
 				wake_lock(&ds->wake_lock);
+=======
+				__pm_stay_awake(ds->ws);
+>>>>>>> common/android-3.10.y
 				hrtimer_start(
 					&ds->timer, ds->info->debounce_time,
 					HRTIMER_MODE_REL);
@@ -348,6 +367,7 @@ static int gpio_event_input_request_irqs(struct gpio_input_state *ds)
 				ds->info->keymap[i].gpio, irq);
 			goto err_request_irq_failed;
 		}
+<<<<<<< HEAD
 #ifdef CONFIG_HTC_WAKE_ON_VOL
 		if (ds->info->keymap[i].code == KEY_VOLUMEUP ||
 			ds->info->keymap[i].code == KEY_VOLUMEDOWN) {
@@ -362,6 +382,8 @@ static int gpio_event_input_request_irqs(struct gpio_input_state *ds)
 			enable_irq_wake(irq);
 		}
 #endif
+=======
+>>>>>>> common/android-3.10.y
 		if (ds->info->info.no_suspend) {
 			err = enable_irq_wake(irq);
 			if (err) {
@@ -373,9 +395,12 @@ static int gpio_event_input_request_irqs(struct gpio_input_state *ds)
 			}
 		}
 	}
+<<<<<<< HEAD
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 	init_power_key_api();
 #endif
+=======
+>>>>>>> common/android-3.10.y
 	return 0;
 
 	for (i = ds->info->keymap_size - 1; i >= 0; i--) {
@@ -399,9 +424,13 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 	unsigned long irqflags;
 	struct gpio_event_input_info *di;
 	struct gpio_input_state *ds = *data;
+<<<<<<< HEAD
 #ifdef CONFIG_HTC_WAKE_ON_VOL
 	struct kobject *keyboard_kobj;
 #endif
+=======
+	char *wlname;
+>>>>>>> common/android-3.10.y
 
 	di = container_of(info, struct gpio_event_input_info, info);
 
@@ -437,7 +466,23 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 		ds->debounce_count = di->keymap_size;
 		ds->input_devs = input_devs;
 		ds->info = di;
+<<<<<<< HEAD
 		wake_lock_init(&ds->wake_lock, WAKE_LOCK_SUSPEND, "gpio_input");
+=======
+		wlname = kasprintf(GFP_KERNEL, "gpio_input:%s%s",
+				   input_devs->dev[0]->name,
+				   (input_devs->count > 1) ? "..." : "");
+
+		ds->ws = wakeup_source_register(wlname);
+		kfree(wlname);
+		if (!ds->ws) {
+			ret = -ENOMEM;
+			pr_err("gpio_event_input_func: "
+				"Failed to allocate wakeup source\n");
+			goto err_ws_failed;
+		}
+
+>>>>>>> common/android-3.10.y
 		spin_lock_init(&ds->irq_lock);
 
 		for (i = 0; i < di->keymap_size; i++) {
@@ -474,6 +519,7 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 
 		ret = gpio_event_input_request_irqs(ds);
 
+<<<<<<< HEAD
 #ifdef CONFIG_HTC_WAKE_ON_VOL
 		keyboard_kobj = kobject_create_and_add("keyboard", NULL);
 		if (keyboard_kobj == NULL) {
@@ -488,6 +534,8 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 		set_wakeup = 0;
 #endif
 
+=======
+>>>>>>> common/android-3.10.y
 		spin_lock_irqsave(&ds->irq_lock, irqflags);
 		ds->use_irq = ret == 0;
 
@@ -523,7 +571,12 @@ err_gpio_request_failed:
 		;
 	}
 err_bad_keymap:
+<<<<<<< HEAD
 	wake_lock_destroy(&ds->wake_lock);
+=======
+	wakeup_source_unregister(ds->ws);
+err_ws_failed:
+>>>>>>> common/android-3.10.y
 	kfree(ds);
 err_ds_alloc_failed:
 	return ret;

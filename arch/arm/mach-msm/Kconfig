@@ -1,10 +1,21 @@
 if ARCH_MSM
 
+<<<<<<< HEAD
 menu "MSM SoC Type"
+=======
+comment "Qualcomm MSM SoC Type"
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960)
+
+choice
+	prompt "Qualcomm MSM SoC Type"
+	default ARCH_MSM7X00A
+	depends on !(ARCH_MSM8X60 || ARCH_MSM8960)
+>>>>>>> common/android-3.10.y
 
 config ARCH_MSM7X01A
 	bool "MSM7x00A / MSM7x01A"
 	select ARCH_MSM_ARM11
+<<<<<<< HEAD
 	select MSM_VIC
 	select CPU_V6
 	select GPIO_MSM_V1
@@ -40,10 +51,19 @@ config ARCH_MSM7X27
 	select DONT_MAP_HOLE_AFTER_MEMBANK0
 	select MIGHT_HAVE_CACHE_L2X0
 	select MSM_MODEM_RESTART
+=======
+	select CPU_V6
+	select GPIO_MSM_V1
+	select MACH_TROUT if !MACH_HALIBUT
+	select MSM_PROC_COMM
+	select MSM_SMD
+	select MSM_SMD_PKG3
+>>>>>>> common/android-3.10.y
 
 config ARCH_MSM7X30
 	bool "MSM7x30"
 	select ARCH_MSM_SCORPION
+<<<<<<< HEAD
 	select MSM_VIC
 	select CPU_V7
 	select GPIO_MSM_V1
@@ -61,10 +81,20 @@ config ARCH_MSM7X30
 	select MSM_PM2 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
 	select MSM_MODEM_RESTART
+=======
+	select CPU_V7
+	select GPIO_MSM_V1
+	select MACH_MSM7X30_SURF # if !
+	select MSM_GPIOMUX
+	select MSM_PROC_COMM
+	select MSM_SMD
+	select MSM_VIC
+>>>>>>> common/android-3.10.y
 
 config ARCH_QSD8X50
 	bool "QSD8X50"
 	select ARCH_MSM_SCORPION
+<<<<<<< HEAD
 	select MSM_VIC
 	select CPU_V7
 	select GPIO_MSM_V1
@@ -93,6 +123,24 @@ config ARCH_MSM8X60
 	select MSM_DIRECT_SCLK_ACCESS
 	select MSM_RPM
 	select MSM_XO
+=======
+	select CPU_V7
+	select GPIO_MSM_V1
+	select MACH_QSD8X50_SURF if !MACH_QSD8X50A_ST1_5
+	select MSM_GPIOMUX
+	select MSM_PROC_COMM
+	select MSM_SMD
+	select MSM_VIC
+
+endchoice
+
+config ARCH_MSM8X60
+	bool "MSM8X60"
+	select ARM_GIC
+	select CPU_V7
+	select GPIO_MSM_V2
+	select HAVE_SMP
+>>>>>>> common/android-3.10.y
 	select MSM_GPIOMUX
 	select MSM_BUS_SCALING
 	select MSM_SECURE_IO
@@ -130,6 +178,7 @@ config ARCH_MSM8X60
 	select CPU_HAS_L2_PMU
 	select MSM_SPM_V1
 	select MSM_SCM if SMP
+<<<<<<< HEAD
 	select MULTI_IRQ_HANDLER
 	select MSM_MULTIMEDIA_USE_ION
 	select MSM_PM8X60 if PM
@@ -278,9 +327,20 @@ config ARCH_MPQ8092
 	bool "MPQ8092"
 	select ARCH_MSM_KRAITMP
 	select GPIO_MSM_V3
+=======
+	select MSM_V2_TLMM
+	select USE_OF
+
+config ARCH_MSM8960
+	bool "MSM8960"
+>>>>>>> common/android-3.10.y
 	select ARM_GIC
 	select MULTI_IRQ_HANDLER
 	select CPU_V7
+<<<<<<< HEAD
+=======
+	select HAVE_SMP
+>>>>>>> common/android-3.10.y
 	select MSM_GPIOMUX
 	select MAY_HAVE_SPARSE_IRQ
 	select SPARSE_IRQ
@@ -293,6 +353,7 @@ config ARCH_MSM8226
 	select ARM_GIC
 	select CPU_V7
 	select MSM_SCM if SMP
+<<<<<<< HEAD
 	select MSM_GPIOMUX
 	select MULTI_IRQ_HANDLER
 	select MSM_MULTIMEDIA_USE_ION
@@ -381,6 +442,10 @@ config MSM_SOC_REV_A
 	bool "Rev. A"
 	select ARCH_MSM7X27A if ARCH_MSM7X27
 endchoice
+=======
+	select MSM_V2_TLMM
+	select USE_OF
+>>>>>>> common/android-3.10.y
 
 config MSM_KRAIT_TBB_ABORT_HANDLER
 	bool "Krait TBB/TBH data abort handler"
@@ -399,6 +464,7 @@ config  ARCH_MSM_ARM11
 
 config  ARCH_MSM_SCORPION
 	bool
+<<<<<<< HEAD
 
 config  ARCH_MSM_KRAIT
 	bool
@@ -407,6 +473,8 @@ config  ARCH_MSM_KRAIT
 config  MSM_SMP
 	select HAVE_SMP
 	bool
+=======
+>>>>>>> common/android-3.10.y
 
 config  ARCH_MSM_SCORPIONMP
 	select ARCH_MSM_SCORPION
@@ -693,13 +761,19 @@ config MACH_QSD8X50_SURF
 
 config MACH_QSD8X50_FFA
 	depends on ARCH_QSD8X50
+<<<<<<< HEAD
 	depends on MSM_SOC_REV_NONE
 	depends on MSM_STACKED_MEMORY
 	default y
 	bool "QSD8x50 FFA"
+=======
+	bool "QSD8x50A ST1.5"
+	select MSM_SOC_REV_A
+>>>>>>> common/android-3.10.y
 	help
 	  Support for the Qualcomm QSD8x50 FFA eval board.
 
+<<<<<<< HEAD
 config MACH_MSM7X25_SURF
 	depends on ARCH_MSM7X25
 	depends on !MSM_STACKED_MEMORY
@@ -922,6 +996,8 @@ config MACH_FSM9XXX_SURF
 config MACH_MSM_DUMMY
 	bool "NONE (No device)"
 
+=======
+>>>>>>> common/android-3.10.y
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"

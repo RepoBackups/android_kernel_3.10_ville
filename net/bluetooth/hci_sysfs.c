@@ -1,12 +1,13 @@
 /* Bluetooth HCI driver model support. */
 
-#include <linux/kernel.h>
-#include <linux/slab.h>
-#include <linux/init.h>
 #include <linux/debugfs.h>
+<<<<<<< HEAD
 #include <linux/seq_file.h>
 #include <linux/interrupt.h>
+=======
+>>>>>>> common/android-3.10.y
 #include <linux/module.h>
+#include <asm/unaligned.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
@@ -30,27 +31,35 @@ static inline char *link_typetostr(int type)
 	}
 }
 
-static ssize_t show_link_type(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_link_type(struct device *dev,
+			      struct device_attribute *attr, char *buf)
 {
 	struct hci_conn *conn = dev_get_drvdata(dev);
 	return sprintf(buf, "%s\n", link_typetostr(conn->type));
 }
 
-static ssize_t show_link_address(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_link_address(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
+<<<<<<< HEAD
 	struct hci_conn *conn = dev_get_drvdata(dev);
 	return sprintf(buf, "%s\n", batostr(&conn->dst));
+=======
+	struct hci_conn *conn = to_hci_conn(dev);
+	return sprintf(buf, "%pMR\n", &conn->dst);
+>>>>>>> common/android-3.10.y
 }
 
-static ssize_t show_link_features(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_link_features(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
 	struct hci_conn *conn = dev_get_drvdata(dev);
 
 	return sprintf(buf, "0x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-				conn->features[0], conn->features[1],
-				conn->features[2], conn->features[3],
-				conn->features[4], conn->features[5],
-				conn->features[6], conn->features[7]);
+		       conn->features[0][0], conn->features[0][1],
+		       conn->features[0][2], conn->features[0][3],
+		       conn->features[0][4], conn->features[0][5],
+		       conn->features[0][6], conn->features[0][7]);
 }
 
 #define LINK_ATTR(_name, _mode, _show, _store) \
@@ -134,7 +143,6 @@ static void del_conn(struct work_struct *work)
 	}
 
 	device_del(&conn->dev);
-	put_device(&conn->dev);
 
 	hci_dev_put(hdev);
 }
@@ -204,19 +212,22 @@ static inline char *host_typetostr(int type)
 	}
 }
 
-static ssize_t show_bus(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_bus(struct device *dev,
+			struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%s\n", host_bustostr(hdev->bus));
 }
 
-static ssize_t show_type(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_type(struct device *dev,
+			 struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%s\n", host_typetostr(hdev->dev_type));
 }
 
-static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_name(struct device *dev,
+			 struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	char name[HCI_MAX_NAME_LENGTH + 1];
@@ -229,55 +240,75 @@ static ssize_t show_name(struct device *dev, struct device_attribute *attr, char
 	return sprintf(buf, "%s\n", name);
 }
 
-static ssize_t show_class(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_class(struct device *dev,
+			  struct device_attribute *attr, char *buf)
 {
+<<<<<<< HEAD
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "0x%.2x%.2x%.2x\n",
 			hdev->dev_class[2], hdev->dev_class[1], hdev->dev_class[0]);
+=======
+	struct hci_dev *hdev = to_hci_dev(dev);
+	return sprintf(buf, "0x%.2x%.2x%.2x\n", hdev->dev_class[2],
+		       hdev->dev_class[1], hdev->dev_class[0]);
+>>>>>>> common/android-3.10.y
 }
 
-static ssize_t show_address(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_address(struct device *dev,
+			    struct device_attribute *attr, char *buf)
 {
+<<<<<<< HEAD
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%s\n", batostr(&hdev->bdaddr));
+=======
+	struct hci_dev *hdev = to_hci_dev(dev);
+	return sprintf(buf, "%pMR\n", &hdev->bdaddr);
+>>>>>>> common/android-3.10.y
 }
 
-static ssize_t show_features(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_features(struct device *dev,
+			     struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 
 	return sprintf(buf, "0x%02x%02x%02x%02x%02x%02x%02x%02x\n",
-				hdev->features[0], hdev->features[1],
-				hdev->features[2], hdev->features[3],
-				hdev->features[4], hdev->features[5],
-				hdev->features[6], hdev->features[7]);
+		       hdev->features[0][0], hdev->features[0][1],
+		       hdev->features[0][2], hdev->features[0][3],
+		       hdev->features[0][4], hdev->features[0][5],
+		       hdev->features[0][6], hdev->features[0][7]);
 }
 
-static ssize_t show_manufacturer(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_manufacturer(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->manufacturer);
 }
 
-static ssize_t show_hci_version(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_hci_version(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->hci_ver);
 }
 
-static ssize_t show_hci_revision(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_hci_revision(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->hci_rev);
 }
 
-static ssize_t show_idle_timeout(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_idle_timeout(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->idle_timeout);
 }
 
-static ssize_t store_idle_timeout(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t store_idle_timeout(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	unsigned int val;
@@ -295,13 +326,16 @@ static ssize_t store_idle_timeout(struct device *dev, struct device_attribute *a
 	return count;
 }
 
-static ssize_t show_sniff_max_interval(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_sniff_max_interval(struct device *dev,
+				       struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->sniff_max_interval);
 }
 
-static ssize_t store_sniff_max_interval(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t store_sniff_max_interval(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	u16 val;
@@ -319,13 +353,16 @@ static ssize_t store_sniff_max_interval(struct device *dev, struct device_attrib
 	return count;
 }
 
-static ssize_t show_sniff_min_interval(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_sniff_min_interval(struct device *dev,
+				       struct device_attribute *attr, char *buf)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", hdev->sniff_min_interval);
 }
 
-static ssize_t store_sniff_min_interval(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t store_sniff_min_interval(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	struct hci_dev *hdev = dev_get_drvdata(dev);
 	u16 val;
@@ -354,11 +391,11 @@ static DEVICE_ATTR(hci_version, S_IRUGO, show_hci_version, NULL);
 static DEVICE_ATTR(hci_revision, S_IRUGO, show_hci_revision, NULL);
 
 static DEVICE_ATTR(idle_timeout, S_IRUGO | S_IWUSR,
-				show_idle_timeout, store_idle_timeout);
+		   show_idle_timeout, store_idle_timeout);
 static DEVICE_ATTR(sniff_max_interval, S_IRUGO | S_IWUSR,
-				show_sniff_max_interval, store_sniff_max_interval);
+		   show_sniff_max_interval, store_sniff_max_interval);
 static DEVICE_ATTR(sniff_min_interval, S_IRUGO | S_IWUSR,
-				show_sniff_min_interval, store_sniff_min_interval);
+		   show_sniff_min_interval, store_sniff_min_interval);
 
 static struct attribute *bt_host_attrs[] = {
 	&dev_attr_bus.attr,
@@ -407,8 +444,8 @@ static int inquiry_cache_show(struct seq_file *f, void *p)
 
 	for (e = cache->list; e; e = e->next) {
 		struct inquiry_data *data = &e->data;
-		seq_printf(f, "%s %d %d %d 0x%.2x%.2x%.2x 0x%.4x %d %d %u\n",
-			   batostr(&data->bdaddr),
+		seq_printf(f, "%pMR %d %d %d 0x%.2x%.2x%.2x 0x%.4x %d %d %u\n",
+			   &data->bdaddr,
 			   data->pscan_rep_mode, data->pscan_period_mode,
 			   data->pscan_mode, data->dev_class[2],
 			   data->dev_class[1], data->dev_class[0],
@@ -445,8 +482,13 @@ static int blacklist_show(struct seq_file *f, void *p)
 
 		b = list_entry(l, struct bdaddr_list, list);
 
+<<<<<<< HEAD
 		seq_printf(f, "%s\n", batostr(&b->bdaddr));
 	}
+=======
+	list_for_each_entry(b, &hdev->blacklist, list)
+		seq_printf(f, "%pMR\n", &b->bdaddr);
+>>>>>>> common/android-3.10.y
 
 	hci_dev_unlock_bh(hdev);
 
@@ -467,19 +509,18 @@ static const struct file_operations blacklist_fops = {
 
 static void print_bt_uuid(struct seq_file *f, u8 *uuid)
 {
-	u32 data0, data4;
-	u16 data1, data2, data3, data5;
+	u32 data0, data5;
+	u16 data1, data2, data3, data4;
 
-	memcpy(&data0, &uuid[0], 4);
-	memcpy(&data1, &uuid[4], 2);
-	memcpy(&data2, &uuid[6], 2);
-	memcpy(&data3, &uuid[8], 2);
-	memcpy(&data4, &uuid[10], 4);
-	memcpy(&data5, &uuid[14], 2);
+	data5 = get_unaligned_le32(uuid);
+	data4 = get_unaligned_le16(uuid + 4);
+	data3 = get_unaligned_le16(uuid + 6);
+	data2 = get_unaligned_le16(uuid + 8);
+	data1 = get_unaligned_le16(uuid + 10);
+	data0 = get_unaligned_le32(uuid + 12);
 
-	seq_printf(f, "%.8x-%.4x-%.4x-%.4x-%.8x%.4x\n",
-				ntohl(data0), ntohs(data1), ntohs(data2),
-				ntohs(data3), ntohl(data4), ntohs(data5));
+	seq_printf(f, "%.8x-%.4x-%.4x-%.4x-%.4x%.8x\n",
+		   data0, data1, data2, data3, data4, data5);
 }
 
 static int uuids_show(struct seq_file *f, void *p)
@@ -514,17 +555,64 @@ static const struct file_operations uuids_fops = {
 	.release	= single_release,
 };
 
+<<<<<<< HEAD
 int hci_register_sysfs(struct hci_dev *hdev)
+=======
+static int auto_accept_delay_set(void *data, u64 val)
+{
+	struct hci_dev *hdev = data;
+
+	hci_dev_lock(hdev);
+
+	hdev->auto_accept_delay = val;
+
+	hci_dev_unlock(hdev);
+
+	return 0;
+}
+
+static int auto_accept_delay_get(void *data, u64 *val)
+{
+	struct hci_dev *hdev = data;
+
+	hci_dev_lock(hdev);
+
+	*val = hdev->auto_accept_delay;
+
+	hci_dev_unlock(hdev);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(auto_accept_delay_fops, auto_accept_delay_get,
+			auto_accept_delay_set, "%llu\n");
+
+void hci_init_sysfs(struct hci_dev *hdev)
+{
+	struct device *dev = &hdev->dev;
+
+	dev->type = &bt_host;
+	dev->class = bt_class;
+
+	__module_get(THIS_MODULE);
+	device_initialize(dev);
+}
+
+int hci_add_sysfs(struct hci_dev *hdev)
+>>>>>>> common/android-3.10.y
 {
 	struct device *dev = &hdev->dev;
 	int err;
 
 	BT_DBG("%p name %s bus %d", hdev, hdev->name, hdev->bus);
 
+<<<<<<< HEAD
 	dev->type = &bt_host;
 	dev->class = bt_class;
 	dev->parent = hdev->parent;
 
+=======
+>>>>>>> common/android-3.10.y
 	dev_set_name(dev, "%s", hdev->name);
 
 	dev_set_drvdata(dev, hdev);
@@ -541,13 +629,18 @@ int hci_register_sysfs(struct hci_dev *hdev)
 		return 0;
 
 	debugfs_create_file("inquiry_cache", 0444, hdev->debugfs,
-						hdev, &inquiry_cache_fops);
+			    hdev, &inquiry_cache_fops);
 
 	debugfs_create_file("blacklist", 0444, hdev->debugfs,
-						hdev, &blacklist_fops);
+			    hdev, &blacklist_fops);
 
 	debugfs_create_file("uuids", 0444, hdev->debugfs, hdev, &uuids_fops);
 
+<<<<<<< HEAD
+=======
+	debugfs_create_file("auto_accept_delay", 0444, hdev->debugfs, hdev,
+			    &auto_accept_delay_fops);
+>>>>>>> common/android-3.10.y
 	return 0;
 }
 
@@ -565,10 +658,8 @@ int __init bt_sysfs_init(void)
 	bt_debugfs = debugfs_create_dir("bluetooth", NULL);
 
 	bt_class = class_create(THIS_MODULE, "bluetooth");
-	if (IS_ERR(bt_class))
-		return PTR_ERR(bt_class);
 
-	return 0;
+	return PTR_RET(bt_class);
 }
 
 void bt_sysfs_cleanup(void)

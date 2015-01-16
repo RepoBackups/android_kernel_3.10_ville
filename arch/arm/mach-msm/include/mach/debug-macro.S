@@ -39,8 +39,12 @@
 	@ Write the 1 character to UARTDM_TF
 	str	\rd, [\rx, #UARTDM_TF_OFFSET]
 #else
+<<<<<<< HEAD
 	teq     \rx, #0
 	strne   \rd, [\rx, #0x0C]
+=======
+	str	\rd, [\rx, #0x0C]
+>>>>>>> common/android-3.10.y
 #endif
 	.endm
 

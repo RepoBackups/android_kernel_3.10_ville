@@ -59,6 +59,16 @@ MODULE_PARM_DESC (rndis_debug, "enable debugging");
 
 #define RNDIS_MAX_CONFIGS	1
 
+int rndis_ul_max_pkt_per_xfer_rcvd;
+module_param(rndis_ul_max_pkt_per_xfer_rcvd, int, S_IRUGO);
+MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer_rcvd,
+		"Max num of REMOTE_NDIS_PACKET_MSGs received in a single transfer");
+
+int rndis_ul_max_xfer_size_rcvd;
+module_param(rndis_ul_max_xfer_size_rcvd, int, S_IRUGO);
+MODULE_PARM_DESC(rndis_ul_max_xfer_size_rcvd,
+		"Max size of bus transfer received");
+
 
 static rndis_params rndis_per_dev_params[RNDIS_MAX_CONFIGS];
 
@@ -73,65 +83,65 @@ static rndis_resp_t *rndis_add_response(int configNr, u32 length);
 static const u32 oid_supported_list[] =
 {
 	/* the general stuff */
-	OID_GEN_SUPPORTED_LIST,
-	OID_GEN_HARDWARE_STATUS,
-	OID_GEN_MEDIA_SUPPORTED,
-	OID_GEN_MEDIA_IN_USE,
-	OID_GEN_MAXIMUM_FRAME_SIZE,
-	OID_GEN_LINK_SPEED,
-	OID_GEN_TRANSMIT_BLOCK_SIZE,
-	OID_GEN_RECEIVE_BLOCK_SIZE,
-	OID_GEN_VENDOR_ID,
-	OID_GEN_VENDOR_DESCRIPTION,
-	OID_GEN_VENDOR_DRIVER_VERSION,
-	OID_GEN_CURRENT_PACKET_FILTER,
-	OID_GEN_MAXIMUM_TOTAL_SIZE,
-	OID_GEN_MEDIA_CONNECT_STATUS,
-	OID_GEN_PHYSICAL_MEDIUM,
+	RNDIS_OID_GEN_SUPPORTED_LIST,
+	RNDIS_OID_GEN_HARDWARE_STATUS,
+	RNDIS_OID_GEN_MEDIA_SUPPORTED,
+	RNDIS_OID_GEN_MEDIA_IN_USE,
+	RNDIS_OID_GEN_MAXIMUM_FRAME_SIZE,
+	RNDIS_OID_GEN_LINK_SPEED,
+	RNDIS_OID_GEN_TRANSMIT_BLOCK_SIZE,
+	RNDIS_OID_GEN_RECEIVE_BLOCK_SIZE,
+	RNDIS_OID_GEN_VENDOR_ID,
+	RNDIS_OID_GEN_VENDOR_DESCRIPTION,
+	RNDIS_OID_GEN_VENDOR_DRIVER_VERSION,
+	RNDIS_OID_GEN_CURRENT_PACKET_FILTER,
+	RNDIS_OID_GEN_MAXIMUM_TOTAL_SIZE,
+	RNDIS_OID_GEN_MEDIA_CONNECT_STATUS,
+	RNDIS_OID_GEN_PHYSICAL_MEDIUM,
 
 	/* the statistical stuff */
-	OID_GEN_XMIT_OK,
-	OID_GEN_RCV_OK,
-	OID_GEN_XMIT_ERROR,
-	OID_GEN_RCV_ERROR,
-	OID_GEN_RCV_NO_BUFFER,
+	RNDIS_OID_GEN_XMIT_OK,
+	RNDIS_OID_GEN_RCV_OK,
+	RNDIS_OID_GEN_XMIT_ERROR,
+	RNDIS_OID_GEN_RCV_ERROR,
+	RNDIS_OID_GEN_RCV_NO_BUFFER,
 #ifdef	RNDIS_OPTIONAL_STATS
-	OID_GEN_DIRECTED_BYTES_XMIT,
-	OID_GEN_DIRECTED_FRAMES_XMIT,
-	OID_GEN_MULTICAST_BYTES_XMIT,
-	OID_GEN_MULTICAST_FRAMES_XMIT,
-	OID_GEN_BROADCAST_BYTES_XMIT,
-	OID_GEN_BROADCAST_FRAMES_XMIT,
-	OID_GEN_DIRECTED_BYTES_RCV,
-	OID_GEN_DIRECTED_FRAMES_RCV,
-	OID_GEN_MULTICAST_BYTES_RCV,
-	OID_GEN_MULTICAST_FRAMES_RCV,
-	OID_GEN_BROADCAST_BYTES_RCV,
-	OID_GEN_BROADCAST_FRAMES_RCV,
-	OID_GEN_RCV_CRC_ERROR,
-	OID_GEN_TRANSMIT_QUEUE_LENGTH,
+	RNDIS_OID_GEN_DIRECTED_BYTES_XMIT,
+	RNDIS_OID_GEN_DIRECTED_FRAMES_XMIT,
+	RNDIS_OID_GEN_MULTICAST_BYTES_XMIT,
+	RNDIS_OID_GEN_MULTICAST_FRAMES_XMIT,
+	RNDIS_OID_GEN_BROADCAST_BYTES_XMIT,
+	RNDIS_OID_GEN_BROADCAST_FRAMES_XMIT,
+	RNDIS_OID_GEN_DIRECTED_BYTES_RCV,
+	RNDIS_OID_GEN_DIRECTED_FRAMES_RCV,
+	RNDIS_OID_GEN_MULTICAST_BYTES_RCV,
+	RNDIS_OID_GEN_MULTICAST_FRAMES_RCV,
+	RNDIS_OID_GEN_BROADCAST_BYTES_RCV,
+	RNDIS_OID_GEN_BROADCAST_FRAMES_RCV,
+	RNDIS_OID_GEN_RCV_CRC_ERROR,
+	RNDIS_OID_GEN_TRANSMIT_QUEUE_LENGTH,
 #endif	/* RNDIS_OPTIONAL_STATS */
 
 	/* mandatory 802.3 */
 	/* the general stuff */
-	OID_802_3_PERMANENT_ADDRESS,
-	OID_802_3_CURRENT_ADDRESS,
-	OID_802_3_MULTICAST_LIST,
-	OID_802_3_MAC_OPTIONS,
-	OID_802_3_MAXIMUM_LIST_SIZE,
+	RNDIS_OID_802_3_PERMANENT_ADDRESS,
+	RNDIS_OID_802_3_CURRENT_ADDRESS,
+	RNDIS_OID_802_3_MULTICAST_LIST,
+	RNDIS_OID_802_3_MAC_OPTIONS,
+	RNDIS_OID_802_3_MAXIMUM_LIST_SIZE,
 
 	/* the statistical stuff */
-	OID_802_3_RCV_ERROR_ALIGNMENT,
-	OID_802_3_XMIT_ONE_COLLISION,
-	OID_802_3_XMIT_MORE_COLLISIONS,
+	RNDIS_OID_802_3_RCV_ERROR_ALIGNMENT,
+	RNDIS_OID_802_3_XMIT_ONE_COLLISION,
+	RNDIS_OID_802_3_XMIT_MORE_COLLISIONS,
 #ifdef	RNDIS_OPTIONAL_STATS
-	OID_802_3_XMIT_DEFERRED,
-	OID_802_3_XMIT_MAX_COLLISIONS,
-	OID_802_3_RCV_OVERRUN,
-	OID_802_3_XMIT_UNDERRUN,
-	OID_802_3_XMIT_HEARTBEAT_FAILURE,
-	OID_802_3_XMIT_TIMES_CRS_LOST,
-	OID_802_3_XMIT_LATE_COLLISIONS,
+	RNDIS_OID_802_3_XMIT_DEFERRED,
+	RNDIS_OID_802_3_XMIT_MAX_COLLISIONS,
+	RNDIS_OID_802_3_RCV_OVERRUN,
+	RNDIS_OID_802_3_XMIT_UNDERRUN,
+	RNDIS_OID_802_3_XMIT_HEARTBEAT_FAILURE,
+	RNDIS_OID_802_3_XMIT_TIMES_CRS_LOST,
+	RNDIS_OID_802_3_XMIT_LATE_COLLISIONS,
 #endif	/* RNDIS_OPTIONAL_STATS */
 
 #ifdef	RNDIS_PM
@@ -200,8 +210,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 	/* general oids (table 4-1) */
 
 	/* mandatory */
-	case OID_GEN_SUPPORTED_LIST:
-		pr_debug("%s: OID_GEN_SUPPORTED_LIST\n", __func__);
+	case RNDIS_OID_GEN_SUPPORTED_LIST:
+		pr_debug("%s: RNDIS_OID_GEN_SUPPORTED_LIST\n", __func__);
 		length = sizeof(oid_supported_list);
 		count  = length / sizeof(u32);
 		for (i = 0; i < count; i++)
@@ -210,8 +220,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_HARDWARE_STATUS:
-		pr_debug("%s: OID_GEN_HARDWARE_STATUS\n", __func__);
+	case RNDIS_OID_GEN_HARDWARE_STATUS:
+		pr_debug("%s: RNDIS_OID_GEN_HARDWARE_STATUS\n", __func__);
 		/* Bogus question!
 		 * Hardware must be ready to receive high level protocols.
 		 * BTW:
@@ -223,23 +233,23 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_MEDIA_SUPPORTED:
-		pr_debug("%s: OID_GEN_MEDIA_SUPPORTED\n", __func__);
+	case RNDIS_OID_GEN_MEDIA_SUPPORTED:
+		pr_debug("%s: RNDIS_OID_GEN_MEDIA_SUPPORTED\n", __func__);
 		*outbuf = cpu_to_le32(rndis_per_dev_params[configNr].medium);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_MEDIA_IN_USE:
-		pr_debug("%s: OID_GEN_MEDIA_IN_USE\n", __func__);
+	case RNDIS_OID_GEN_MEDIA_IN_USE:
+		pr_debug("%s: RNDIS_OID_GEN_MEDIA_IN_USE\n", __func__);
 		/* one medium, one transport... (maybe you do it better) */
 		*outbuf = cpu_to_le32(rndis_per_dev_params[configNr].medium);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_MAXIMUM_FRAME_SIZE:
-		pr_debug("%s: OID_GEN_MAXIMUM_FRAME_SIZE\n", __func__);
+	case RNDIS_OID_GEN_MAXIMUM_FRAME_SIZE:
+		pr_debug("%s: RNDIS_OID_GEN_MAXIMUM_FRAME_SIZE\n", __func__);
 		if (rndis_per_dev_params[configNr].dev) {
 			*outbuf = cpu_to_le32(
 				rndis_per_dev_params[configNr].dev->mtu);
@@ -248,11 +258,11 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_LINK_SPEED:
+	case RNDIS_OID_GEN_LINK_SPEED:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_LINK_SPEED\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_LINK_SPEED\n", __func__);
 		if (rndis_per_dev_params[configNr].media_state
-				== NDIS_MEDIA_STATE_DISCONNECTED)
+				== RNDIS_MEDIA_STATE_DISCONNECTED)
 			*outbuf = cpu_to_le32(0);
 		else
 			*outbuf = cpu_to_le32(
@@ -261,8 +271,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_TRANSMIT_BLOCK_SIZE:
-		pr_debug("%s: OID_GEN_TRANSMIT_BLOCK_SIZE\n", __func__);
+	case RNDIS_OID_GEN_TRANSMIT_BLOCK_SIZE:
+		pr_debug("%s: RNDIS_OID_GEN_TRANSMIT_BLOCK_SIZE\n", __func__);
 		if (rndis_per_dev_params[configNr].dev) {
 			*outbuf = cpu_to_le32(
 				rndis_per_dev_params[configNr].dev->mtu);
@@ -271,8 +281,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_RECEIVE_BLOCK_SIZE:
-		pr_debug("%s: OID_GEN_RECEIVE_BLOCK_SIZE\n", __func__);
+	case RNDIS_OID_GEN_RECEIVE_BLOCK_SIZE:
+		pr_debug("%s: RNDIS_OID_GEN_RECEIVE_BLOCK_SIZE\n", __func__);
 		if (rndis_per_dev_params[configNr].dev) {
 			*outbuf = cpu_to_le32(
 				rndis_per_dev_params[configNr].dev->mtu);
@@ -281,16 +291,16 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_VENDOR_ID:
-		pr_debug("%s: OID_GEN_VENDOR_ID\n", __func__);
+	case RNDIS_OID_GEN_VENDOR_ID:
+		pr_debug("%s: RNDIS_OID_GEN_VENDOR_ID\n", __func__);
 		*outbuf = cpu_to_le32(
 			rndis_per_dev_params[configNr].vendorID);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_VENDOR_DESCRIPTION:
-		pr_debug("%s: OID_GEN_VENDOR_DESCRIPTION\n", __func__);
+	case RNDIS_OID_GEN_VENDOR_DESCRIPTION:
+		pr_debug("%s: RNDIS_OID_GEN_VENDOR_DESCRIPTION\n", __func__);
 		if (rndis_per_dev_params[configNr].vendorDescr) {
 			length = strlen(rndis_per_dev_params[configNr].
 					vendorDescr);
@@ -303,38 +313,38 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		retval = 0;
 		break;
 
-	case OID_GEN_VENDOR_DRIVER_VERSION:
-		pr_debug("%s: OID_GEN_VENDOR_DRIVER_VERSION\n", __func__);
+	case RNDIS_OID_GEN_VENDOR_DRIVER_VERSION:
+		pr_debug("%s: RNDIS_OID_GEN_VENDOR_DRIVER_VERSION\n", __func__);
 		/* Created as LE */
 		*outbuf = rndis_driver_version;
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_CURRENT_PACKET_FILTER:
-		pr_debug("%s: OID_GEN_CURRENT_PACKET_FILTER\n", __func__);
+	case RNDIS_OID_GEN_CURRENT_PACKET_FILTER:
+		pr_debug("%s: RNDIS_OID_GEN_CURRENT_PACKET_FILTER\n", __func__);
 		*outbuf = cpu_to_le32(*rndis_per_dev_params[configNr].filter);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_MAXIMUM_TOTAL_SIZE:
-		pr_debug("%s: OID_GEN_MAXIMUM_TOTAL_SIZE\n", __func__);
+	case RNDIS_OID_GEN_MAXIMUM_TOTAL_SIZE:
+		pr_debug("%s: RNDIS_OID_GEN_MAXIMUM_TOTAL_SIZE\n", __func__);
 		*outbuf = cpu_to_le32(RNDIS_MAX_TOTAL_SIZE);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_GEN_MEDIA_CONNECT_STATUS:
+	case RNDIS_OID_GEN_MEDIA_CONNECT_STATUS:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_MEDIA_CONNECT_STATUS\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_MEDIA_CONNECT_STATUS\n", __func__);
 		*outbuf = cpu_to_le32(rndis_per_dev_params[configNr]
 						.media_state);
 		retval = 0;
 		break;
 
-	case OID_GEN_PHYSICAL_MEDIUM:
-		pr_debug("%s: OID_GEN_PHYSICAL_MEDIUM\n", __func__);
+	case RNDIS_OID_GEN_PHYSICAL_MEDIUM:
+		pr_debug("%s: RNDIS_OID_GEN_PHYSICAL_MEDIUM\n", __func__);
 		*outbuf = cpu_to_le32(0);
 		retval = 0;
 		break;
@@ -343,20 +353,20 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 	 * of MS-Windows expect OIDs that aren't specified there.  Other
 	 * versions emit undefined RNDIS messages. DOCUMENT ALL THESE!
 	 */
-	case OID_GEN_MAC_OPTIONS:		/* from WinME */
-		pr_debug("%s: OID_GEN_MAC_OPTIONS\n", __func__);
+	case RNDIS_OID_GEN_MAC_OPTIONS:		/* from WinME */
+		pr_debug("%s: RNDIS_OID_GEN_MAC_OPTIONS\n", __func__);
 		*outbuf = cpu_to_le32(
-			  NDIS_MAC_OPTION_RECEIVE_SERIALIZED
-			| NDIS_MAC_OPTION_FULL_DUPLEX);
+			  RNDIS_MAC_OPTION_RECEIVE_SERIALIZED
+			| RNDIS_MAC_OPTION_FULL_DUPLEX);
 		retval = 0;
 		break;
 
 	/* statistics OIDs (table 4-2) */
 
 	/* mandatory */
-	case OID_GEN_XMIT_OK:
+	case RNDIS_OID_GEN_XMIT_OK:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_XMIT_OK\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_XMIT_OK\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->tx_packets
 				- stats->tx_errors - stats->tx_dropped);
@@ -365,9 +375,9 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_RCV_OK:
+	case RNDIS_OID_GEN_RCV_OK:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_RCV_OK\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_RCV_OK\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->rx_packets
 				- stats->rx_errors - stats->rx_dropped);
@@ -376,9 +386,9 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_XMIT_ERROR:
+	case RNDIS_OID_GEN_XMIT_ERROR:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_XMIT_ERROR\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_XMIT_ERROR\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->tx_errors);
 			retval = 0;
@@ -386,9 +396,9 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_RCV_ERROR:
+	case RNDIS_OID_GEN_RCV_ERROR:
 		if (rndis_debug > 1)
-			pr_debug("%s: OID_GEN_RCV_ERROR\n", __func__);
+			pr_debug("%s: RNDIS_OID_GEN_RCV_ERROR\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->rx_errors);
 			retval = 0;
@@ -396,8 +406,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_GEN_RCV_NO_BUFFER:
-		pr_debug("%s: OID_GEN_RCV_NO_BUFFER\n", __func__);
+	case RNDIS_OID_GEN_RCV_NO_BUFFER:
+		pr_debug("%s: RNDIS_OID_GEN_RCV_NO_BUFFER\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->rx_dropped);
 			retval = 0;
@@ -407,8 +417,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 	/* ieee802.3 OIDs (table 4-3) */
 
 	/* mandatory */
-	case OID_802_3_PERMANENT_ADDRESS:
-		pr_debug("%s: OID_802_3_PERMANENT_ADDRESS\n", __func__);
+	case RNDIS_OID_802_3_PERMANENT_ADDRESS:
+		pr_debug("%s: RNDIS_OID_802_3_PERMANENT_ADDRESS\n", __func__);
 		if (rndis_per_dev_params[configNr].dev) {
 			length = ETH_ALEN;
 			memcpy(outbuf,
@@ -419,8 +429,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_802_3_CURRENT_ADDRESS:
-		pr_debug("%s: OID_802_3_CURRENT_ADDRESS\n", __func__);
+	case RNDIS_OID_802_3_CURRENT_ADDRESS:
+		pr_debug("%s: RNDIS_OID_802_3_CURRENT_ADDRESS\n", __func__);
 		if (rndis_per_dev_params[configNr].dev) {
 			length = ETH_ALEN;
 			memcpy(outbuf,
@@ -431,23 +441,23 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_802_3_MULTICAST_LIST:
-		pr_debug("%s: OID_802_3_MULTICAST_LIST\n", __func__);
+	case RNDIS_OID_802_3_MULTICAST_LIST:
+		pr_debug("%s: RNDIS_OID_802_3_MULTICAST_LIST\n", __func__);
 		/* Multicast base address only */
 		*outbuf = cpu_to_le32(0xE0000000);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_802_3_MAXIMUM_LIST_SIZE:
-		pr_debug("%s: OID_802_3_MAXIMUM_LIST_SIZE\n", __func__);
+	case RNDIS_OID_802_3_MAXIMUM_LIST_SIZE:
+		pr_debug("%s: RNDIS_OID_802_3_MAXIMUM_LIST_SIZE\n", __func__);
 		/* Multicast base address only */
 		*outbuf = cpu_to_le32(1);
 		retval = 0;
 		break;
 
-	case OID_802_3_MAC_OPTIONS:
-		pr_debug("%s: OID_802_3_MAC_OPTIONS\n", __func__);
+	case RNDIS_OID_802_3_MAC_OPTIONS:
+		pr_debug("%s: RNDIS_OID_802_3_MAC_OPTIONS\n", __func__);
 		*outbuf = cpu_to_le32(0);
 		retval = 0;
 		break;
@@ -455,8 +465,8 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 	/* ieee802.3 statistics OIDs (table 4-4) */
 
 	/* mandatory */
-	case OID_802_3_RCV_ERROR_ALIGNMENT:
-		pr_debug("%s: OID_802_3_RCV_ERROR_ALIGNMENT\n", __func__);
+	case RNDIS_OID_802_3_RCV_ERROR_ALIGNMENT:
+		pr_debug("%s: RNDIS_OID_802_3_RCV_ERROR_ALIGNMENT\n", __func__);
 		if (stats) {
 			*outbuf = cpu_to_le32(stats->rx_frame_errors);
 			retval = 0;
@@ -464,15 +474,15 @@ static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
 		break;
 
 	/* mandatory */
-	case OID_802_3_XMIT_ONE_COLLISION:
-		pr_debug("%s: OID_802_3_XMIT_ONE_COLLISION\n", __func__);
+	case RNDIS_OID_802_3_XMIT_ONE_COLLISION:
+		pr_debug("%s: RNDIS_OID_802_3_XMIT_ONE_COLLISION\n", __func__);
 		*outbuf = cpu_to_le32(0);
 		retval = 0;
 		break;
 
 	/* mandatory */
-	case OID_802_3_XMIT_MORE_COLLISIONS:
-		pr_debug("%s: OID_802_3_XMIT_MORE_COLLISIONS\n", __func__);
+	case RNDIS_OID_802_3_XMIT_MORE_COLLISIONS:
+		pr_debug("%s: RNDIS_OID_802_3_XMIT_MORE_COLLISIONS\n", __func__);
 		*outbuf = cpu_to_le32(0);
 		retval = 0;
 		break;
@@ -516,7 +526,7 @@ static int gen_ndis_set_resp(u8 configNr, u32 OID, u8 *buf, u32 buf_len,
 
 	params = &rndis_per_dev_params[configNr];
 	switch (OID) {
-	case OID_GEN_CURRENT_PACKET_FILTER:
+	case RNDIS_OID_GEN_CURRENT_PACKET_FILTER:
 
 		/* these NDIS_PACKET_TYPE_* bitflags are shared with
 		 * cdc_filter; it's not RNDIS-specific
@@ -525,7 +535,7 @@ static int gen_ndis_set_resp(u8 configNr, u32 OID, u8 *buf, u32 buf_len,
 		 *	MULTICAST, ALL_MULTICAST, BROADCAST
 		 */
 		*params->filter = (u16)get_unaligned_le32(buf);
-		pr_debug("%s: OID_GEN_CURRENT_PACKET_FILTER %08x\n",
+		pr_debug("%s: RNDIS_OID_GEN_CURRENT_PACKET_FILTER %08x\n",
 			__func__, *params->filter);
 
 		/* this call has a significant side effect:  it's
@@ -545,9 +555,9 @@ static int gen_ndis_set_resp(u8 configNr, u32 OID, u8 *buf, u32 buf_len,
 		}
 		break;
 
-	case OID_802_3_MULTICAST_LIST:
+	case RNDIS_OID_802_3_MULTICAST_LIST:
 		/* I think we can ignore this */
-		pr_debug("%s: OID_802_3_MULTICAST_LIST\n", __func__);
+		pr_debug("%s: RNDIS_OID_802_3_MULTICAST_LIST\n", __func__);
 		retval = 0;
 		break;
 
@@ -577,7 +587,7 @@ static int rndis_init_response(int configNr, rndis_init_msg_type *buf)
 		return -ENOMEM;
 	resp = (rndis_init_cmplt_type *)r->buf;
 
-	resp->MessageType = cpu_to_le32(REMOTE_NDIS_INITIALIZE_CMPLT);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_INIT_C);
 	resp->MessageLength = cpu_to_le32(52);
 	resp->RequestID = buf->RequestID; /* Still LE in msg buffer */
 	resp->Status = cpu_to_le32(RNDIS_STATUS_SUCCESS);
@@ -586,11 +596,16 @@ static int rndis_init_response(int configNr, rndis_init_msg_type *buf)
 	resp->DeviceFlags = cpu_to_le32(RNDIS_DF_CONNECTIONLESS);
 	resp->Medium = cpu_to_le32(RNDIS_MEDIUM_802_3);
 	resp->MaxPacketsPerTransfer = cpu_to_le32(params->max_pkt_per_xfer);
+<<<<<<< HEAD
 	resp->MaxTransferSize = cpu_to_le32(
 		  params->dev->mtu
+=======
+	resp->MaxTransferSize = cpu_to_le32(params->max_pkt_per_xfer *
+		(params->dev->mtu
+>>>>>>> common/android-3.10.y
 		+ sizeof(struct ethhdr)
 		+ sizeof(struct rndis_packet_msg_type)
-		+ 22);
+		+ 22));
 	resp->PacketAlignmentFactor = cpu_to_le32(0);
 	resp->AFListOffset = cpu_to_le32(0);
 	resp->AFListSize = cpu_to_le32(0);
@@ -621,7 +636,7 @@ static int rndis_query_response(int configNr, rndis_query_msg_type *buf)
 		return -ENOMEM;
 	resp = (rndis_query_cmplt_type *)r->buf;
 
-	resp->MessageType = cpu_to_le32(REMOTE_NDIS_QUERY_CMPLT);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_QUERY_C);
 	resp->RequestID = buf->RequestID; /* Still LE in msg buffer */
 
 	if (gen_ndis_query_resp(configNr, le32_to_cpu(buf->OID),
@@ -668,7 +683,7 @@ static int rndis_set_response(int configNr, rndis_set_msg_type *buf)
 	pr_debug("\n");
 #endif
 
-	resp->MessageType = cpu_to_le32(REMOTE_NDIS_SET_CMPLT);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_SET_C);
 	resp->MessageLength = cpu_to_le32(16);
 	resp->RequestID = buf->RequestID; /* Still LE in msg buffer */
 	if (gen_ndis_set_resp(configNr, le32_to_cpu(buf->OID),
@@ -686,13 +701,19 @@ static int rndis_reset_response(int configNr, rndis_reset_msg_type *buf)
 	rndis_reset_cmplt_type *resp;
 	rndis_resp_t *r;
 	struct rndis_params *params = rndis_per_dev_params + configNr;
+	u32 length;
+	u8 *xbuf;
+
+	/* drain the response queue */
+	while ((xbuf = rndis_get_next_response(configNr, &length)))
+		rndis_free_response(configNr, xbuf);
 
 	r = rndis_add_response(configNr, sizeof(rndis_reset_cmplt_type));
 	if (!r)
 		return -ENOMEM;
 	resp = (rndis_reset_cmplt_type *)r->buf;
 
-	resp->MessageType = cpu_to_le32(REMOTE_NDIS_RESET_CMPLT);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_RESET_C);
 	resp->MessageLength = cpu_to_le32(16);
 	resp->Status = cpu_to_le32(RNDIS_STATUS_SUCCESS);
 	/* resent information */
@@ -716,8 +737,7 @@ static int rndis_keepalive_response(int configNr,
 		return -ENOMEM;
 	resp = (rndis_keepalive_cmplt_type *)r->buf;
 
-	resp->MessageType = cpu_to_le32(
-			REMOTE_NDIS_KEEPALIVE_CMPLT);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_KEEPALIVE_C);
 	resp->MessageLength = cpu_to_le32(16);
 	resp->RequestID = buf->RequestID; /* Still LE in msg buffer */
 	resp->Status = cpu_to_le32(RNDIS_STATUS_SUCCESS);
@@ -745,7 +765,7 @@ static int rndis_indicate_status_msg(int configNr, u32 status)
 		return -ENOMEM;
 	resp = (rndis_indicate_status_msg_type *)r->buf;
 
-	resp->MessageType = cpu_to_le32(REMOTE_NDIS_INDICATE_STATUS_MSG);
+	resp->MessageType = cpu_to_le32(RNDIS_MSG_INDICATE);
 	resp->MessageLength = cpu_to_le32(20);
 	resp->Status = cpu_to_le32(status);
 	resp->StatusBufferLength = cpu_to_le32(0);
@@ -758,7 +778,7 @@ static int rndis_indicate_status_msg(int configNr, u32 status)
 int rndis_signal_connect(int configNr)
 {
 	rndis_per_dev_params[configNr].media_state
-			= NDIS_MEDIA_STATE_CONNECTED;
+			= RNDIS_MEDIA_STATE_CONNECTED;
 	return rndis_indicate_status_msg(configNr,
 					  RNDIS_STATUS_MEDIA_CONNECT);
 }
@@ -766,7 +786,7 @@ int rndis_signal_connect(int configNr)
 int rndis_signal_disconnect(int configNr)
 {
 	rndis_per_dev_params[configNr].media_state
-			= NDIS_MEDIA_STATE_DISCONNECTED;
+			= RNDIS_MEDIA_STATE_DISCONNECTED;
 	return rndis_indicate_status_msg(configNr,
 					  RNDIS_STATUS_MEDIA_DISCONNECT);
 }
@@ -817,15 +837,15 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 
 	/* For USB: responses may take up to 10 seconds */
 	switch (MsgType) {
-	case REMOTE_NDIS_INITIALIZE_MSG:
-		pr_debug("%s: REMOTE_NDIS_INITIALIZE_MSG\n",
+	case RNDIS_MSG_INIT:
+		pr_debug("%s: RNDIS_MSG_INIT\n",
 			__func__);
 		params->state = RNDIS_INITIALIZED;
 		return rndis_init_response(configNr,
 					(rndis_init_msg_type *)buf);
 
-	case REMOTE_NDIS_HALT_MSG:
-		pr_debug("%s: REMOTE_NDIS_HALT_MSG\n",
+	case RNDIS_MSG_HALT:
+		pr_debug("%s: RNDIS_MSG_HALT\n",
 			__func__);
 		params->state = RNDIS_UNINITIALIZED;
 		if (params->dev) {
@@ -834,24 +854,24 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 		}
 		return 0;
 
-	case REMOTE_NDIS_QUERY_MSG:
+	case RNDIS_MSG_QUERY:
 		return rndis_query_response(configNr,
 					(rndis_query_msg_type *)buf);
 
-	case REMOTE_NDIS_SET_MSG:
+	case RNDIS_MSG_SET:
 		return rndis_set_response(configNr,
 					(rndis_set_msg_type *)buf);
 
-	case REMOTE_NDIS_RESET_MSG:
-		pr_debug("%s: REMOTE_NDIS_RESET_MSG\n",
+	case RNDIS_MSG_RESET:
+		pr_debug("%s: RNDIS_MSG_RESET\n",
 			__func__);
 		return rndis_reset_response(configNr,
 					(rndis_reset_msg_type *)buf);
 
-	case REMOTE_NDIS_KEEPALIVE_MSG:
+	case RNDIS_MSG_KEEPALIVE:
 		/* For USB: host does this every 5 seconds */
 		if (rndis_debug > 1)
-			pr_debug("%s: REMOTE_NDIS_KEEPALIVE_MSG\n",
+			pr_debug("%s: RNDIS_MSG_KEEPALIVE\n",
 				__func__);
 		return rndis_keepalive_response(configNr,
 						 (rndis_keepalive_msg_type *)
@@ -864,26 +884,8 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 		 */
 		pr_warning("%s: unknown RNDIS message 0x%08X len %d\n",
 			__func__, MsgType, MsgLength);
-		{
-			unsigned i;
-			for (i = 0; i < MsgLength; i += 16) {
-				pr_debug("%03d: "
-					" %02x %02x %02x %02x"
-					" %02x %02x %02x %02x"
-					" %02x %02x %02x %02x"
-					" %02x %02x %02x %02x"
-					"\n",
-					i,
-					buf[i], buf [i+1],
-						buf[i+2], buf[i+3],
-					buf[i+4], buf [i+5],
-						buf[i+6], buf[i+7],
-					buf[i+8], buf [i+9],
-						buf[i+10], buf[i+11],
-					buf[i+12], buf [i+13],
-						buf[i+14], buf[i+15]);
-			}
-		}
+		print_hex_dump_bytes(__func__, DUMP_PREFIX_OFFSET,
+				     buf, MsgLength);
 		break;
 	}
 
@@ -930,6 +932,8 @@ int rndis_set_param_dev(u8 configNr, struct net_device *dev, u16 *cdc_filter)
 	rndis_per_dev_params[configNr].dev = dev;
 	rndis_per_dev_params[configNr].filter = cdc_filter;
 
+	rndis_ul_max_xfer_size_rcvd = 0;
+	rndis_ul_max_pkt_per_xfer_rcvd = 0;
 	return 0;
 }
 
@@ -971,7 +975,7 @@ void rndis_add_hdr(struct sk_buff *skb)
 		return;
 	header = (void *)skb_push(skb, sizeof(*header));
 	memset(header, 0, sizeof *header);
-	header->MessageType = cpu_to_le32(REMOTE_NDIS_PACKET_MSG);
+	header->MessageType = cpu_to_le32(RNDIS_MSG_PACKET);
 	header->MessageLength = cpu_to_le32(skb->len);
 	header->DataOffset = cpu_to_le32(36);
 	header->DataLength = cpu_to_le32(skb->len - sizeof(*header));
@@ -1035,23 +1039,73 @@ int rndis_rm_hdr(struct gether *port,
 			struct sk_buff *skb,
 			struct sk_buff_head *list)
 {
-	/* tmp points to a struct rndis_packet_msg_type */
-	__le32 *tmp = (void *)skb->data;
+	int num_pkts = 1;
 
-	/* MessageType, MessageLength */
-	if (cpu_to_le32(REMOTE_NDIS_PACKET_MSG)
-			!= get_unaligned(tmp++)) {
-		dev_kfree_skb_any(skb);
-		return -EINVAL;
-	}
-	tmp++;
+	if (skb->len > rndis_ul_max_xfer_size_rcvd)
+		rndis_ul_max_xfer_size_rcvd = skb->len;
 
-	/* DataOffset, DataLength */
-	if (!skb_pull(skb, get_unaligned_le32(tmp++) + 8)) {
-		dev_kfree_skb_any(skb);
-		return -EOVERFLOW;
+	while (skb->len) {
+		struct rndis_packet_msg_type *hdr;
+		struct sk_buff          *skb2;
+		u32             msg_len, data_offset, data_len;
+
+		/* some rndis hosts send extra byte to avoid zlp, ignore it */
+		if (skb->len == 1) {
+			dev_kfree_skb_any(skb);
+			return 0;
+		}
+
+		if (skb->len < sizeof *hdr) {
+			pr_err("invalid rndis pkt: skblen:%u hdr_len:%u",
+					skb->len, sizeof *hdr);
+			dev_kfree_skb_any(skb);
+			return -EINVAL;
+		}
+
+		hdr = (void *)skb->data;
+		msg_len = le32_to_cpu(hdr->MessageLength);
+		data_offset = le32_to_cpu(hdr->DataOffset);
+		data_len = le32_to_cpu(hdr->DataLength);
+
+		if (skb->len < msg_len ||
+				((data_offset + data_len + 8) > msg_len)) {
+			pr_err("invalid rndis message: %d/%d/%d/%d, len:%d\n",
+					le32_to_cpu(hdr->MessageType),
+					msg_len, data_offset, data_len, skb->len);
+			dev_kfree_skb_any(skb);
+			return -EOVERFLOW;
+		}
+		if (le32_to_cpu(hdr->MessageType) != RNDIS_MSG_PACKET) {
+			pr_err("invalid rndis message: %d/%d/%d/%d, len:%d\n",
+					le32_to_cpu(hdr->MessageType),
+					msg_len, data_offset, data_len, skb->len);
+			dev_kfree_skb_any(skb);
+			return -EINVAL;
+		}
+
+		skb_pull(skb, data_offset + 8);
+
+		if (msg_len == skb->len) {
+			skb_trim(skb, data_len);
+			break;
+		}
+
+		skb2 = skb_clone(skb, GFP_ATOMIC);
+		if (!skb2) {
+			pr_err("%s:skb clone failed\n", __func__);
+			dev_kfree_skb_any(skb);
+			return -ENOMEM;
+		}
+
+		skb_pull(skb, msg_len - sizeof *hdr);
+		skb_trim(skb2, data_len);
+		skb_queue_tail(list, skb2);
+
+		num_pkts++;
 	}
-	skb_trim(skb, get_unaligned_le32(tmp++));
+
+	if (num_pkts > rndis_ul_max_pkt_per_xfer_rcvd)
+		rndis_ul_max_pkt_per_xfer_rcvd = num_pkts;
 
 	skb_queue_tail(list, skb);
 	return 0;
@@ -1092,7 +1146,7 @@ static int rndis_proc_show(struct seq_file *m, void *v)
 static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
 				size_t count, loff_t *ppos)
 {
-	rndis_params *p = PDE(file->f_path.dentry->d_inode)->data;
+	rndis_params *p = PDE_DATA(file_inode(file));
 	u32 speed = 0;
 	int i, fl_speed = 0;
 
@@ -1136,7 +1190,7 @@ static ssize_t rndis_proc_write(struct file *file, const char __user *buffer,
 
 static int rndis_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, rndis_proc_show, PDE(inode)->data);
+	return single_open(file, rndis_proc_show, PDE_DATA(inode));
 }
 
 static const struct file_operations rndis_proc_fops = {
@@ -1185,7 +1239,7 @@ int rndis_init(void)
 		rndis_per_dev_params[i].used = 0;
 		rndis_per_dev_params[i].state = RNDIS_UNINITIALIZED;
 		rndis_per_dev_params[i].media_state
-				= NDIS_MEDIA_STATE_DISCONNECTED;
+				= RNDIS_MEDIA_STATE_DISCONNECTED;
 		INIT_LIST_HEAD(&(rndis_per_dev_params[i].resp_queue));
 	}
 
@@ -1199,11 +1253,19 @@ void rndis_exit(void)
 	u8 i;
 	char name[20];
 #endif
+<<<<<<< HEAD
 
 	if (!rndis_initialized)
 		return;
 	rndis_initialized = false;
 
+=======
+
+	if (!rndis_initialized)
+		return;
+	rndis_initialized = false;
+
+>>>>>>> common/android-3.10.y
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
 	for (i = 0; i < RNDIS_MAX_CONFIGS; i++) {
 		sprintf(name, NAME_TEMPLATE, i);

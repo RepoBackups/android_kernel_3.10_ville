@@ -401,10 +401,15 @@ static char *cpio_replace_env(char *new_location)
 		} else
 			break;
 	}
+<<<<<<< HEAD
 
 	return new_location;
 }
+=======
+>>>>>>> common/android-3.10.y
 
+	return new_location;
+}
 
 static int cpio_mkfile_line(const char *line)
 {

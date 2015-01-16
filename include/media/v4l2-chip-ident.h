@@ -91,13 +91,29 @@ enum {
 	
 	V4L2_IDENT_AU0828 = 828,
 
+<<<<<<< HEAD
 	
+=======
+	/* module bttv: ident 848 + 849 */
+	V4L2_IDENT_BT848 = 848,
+	V4L2_IDENT_BT849 = 849,
+
+	/* module bt856: just ident 856 */
+>>>>>>> common/android-3.10.y
 	V4L2_IDENT_BT856 = 856,
 
 	
 	V4L2_IDENT_BT866 = 866,
 
+<<<<<<< HEAD
 	
+=======
+	/* module bttv: ident 878 + 879 */
+	V4L2_IDENT_BT878 = 878,
+	V4L2_IDENT_BT879 = 879,
+
+	/* module ks0127: reserved range 1120-1129 */
+>>>>>>> common/android-3.10.y
 	V4L2_IDENT_KS0122S = 1122,
 	V4L2_IDENT_KS0127  = 1127,
 	V4L2_IDENT_KS0127B = 1128,
@@ -169,7 +185,20 @@ enum {
 	
 	V4L2_IDENT_ADV7343 = 7343,
 
+<<<<<<< HEAD
 	
+=======
+	/* module ths7353: just ident 7353 */
+	V4L2_IDENT_THS7353 = 7353,
+
+	/* module adv7393: just ident 7393 */
+	V4L2_IDENT_ADV7393 = 7393,
+
+	/* module adv7604: just ident 7604 */
+	V4L2_IDENT_ADV7604 = 7604,
+
+	/* module saa7706h: just ident 7706 */
+>>>>>>> common/android-3.10.y
 	V4L2_IDENT_SAA7706H = 7706,
 
 	
@@ -197,7 +226,14 @@ enum {
 	V4L2_IDENT_CX23888_AV = 8881, 
 	V4L2_IDENT_CX23888_IR = 8882, 
 
+<<<<<<< HEAD
 	
+=======
+	/* module ad9389b: just ident 9389 */
+	V4L2_IDENT_AD9389B = 9389,
+
+	/* module tda9840: just ident 9840 */
+>>>>>>> common/android-3.10.y
 	V4L2_IDENT_TDA9840 = 9840,
 
 	

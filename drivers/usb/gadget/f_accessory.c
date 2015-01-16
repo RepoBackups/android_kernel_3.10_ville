@@ -261,8 +261,15 @@ static void acc_complete_in(struct usb_ep *ep, struct usb_request *req)
 {
 	struct acc_dev *dev = _acc_dev;
 
+<<<<<<< HEAD
 	if (req->status != 0)
 		acc_set_disconnected(dev);
+=======
+	if (req->status == -ESHUTDOWN) {
+		pr_debug("acc_complete_in set disconnected");
+		acc_set_disconnected(dev);
+	}
+>>>>>>> common/android-3.10.y
 
 	req_put(dev, &dev->tx_idle, req);
 
@@ -274,8 +281,15 @@ static void acc_complete_out(struct usb_ep *ep, struct usb_request *req)
 	struct acc_dev *dev = _acc_dev;
 
 	dev->rx_done = 1;
+<<<<<<< HEAD
 	if (req->status != 0)
 		acc_set_disconnected(dev);
+=======
+	if (req->status == -ESHUTDOWN) {
+		pr_debug("acc_complete_out set disconnected");
+		acc_set_disconnected(dev);
+	}
+>>>>>>> common/android-3.10.y
 
 	wake_up(&dev->read_wq);
 }
@@ -552,6 +566,7 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 {
 	struct acc_dev *dev = fp->private_data;
 	struct usb_request *req;
+<<<<<<< HEAD
 	int r = count, xfer;
 	int ret = 0;
 
@@ -559,6 +574,18 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 
 	if (dev->disconnected)
 		return -ENODEV;
+=======
+	ssize_t r = count;
+	unsigned xfer;
+	int ret = 0;
+
+	pr_debug("acc_read(%zu)\n", count);
+
+	if (dev->disconnected) {
+		pr_debug("acc_read disconnected");
+		return -ENODEV;
+	}
+>>>>>>> common/android-3.10.y
 
 	if (count > BULK_BUFFER_SIZE)
 		count = BULK_BUFFER_SIZE;
@@ -571,6 +598,15 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 		goto done;
 	}
 
+<<<<<<< HEAD
+=======
+	if (dev->rx_done) {
+		// last req cancelled. try to get it.
+		req = dev->rx_req[0];
+		goto copy_data;
+	}
+
+>>>>>>> common/android-3.10.y
 requeue_req:
 	/* queue a request */
 	req = dev->rx_req[0];
@@ -588,15 +624,33 @@ requeue_req:
 	ret = wait_event_interruptible(dev->read_wq, dev->rx_done);
 	if (ret < 0) {
 		r = ret;
+<<<<<<< HEAD
 		usb_ep_dequeue(dev->ep_out, req);
 		goto done;
 	}
+=======
+		ret = usb_ep_dequeue(dev->ep_out, req);
+		if (ret != 0) {
+			// cancel failed. There can be a data already received.
+			// it will be retrieved in the next read.
+			pr_debug("acc_read: cancelling failed %d", ret);
+		}
+		goto done;
+	}
+
+copy_data:
+	dev->rx_done = 0;
+>>>>>>> common/android-3.10.y
 	if (dev->online) {
 		/* If we got a 0-len packet, throw it back and try again. */
 		if (req->actual == 0)
 			goto requeue_req;
 
+<<<<<<< HEAD
 		pr_debug("rx %p %d\n", req, req->actual);
+=======
+		pr_debug("rx %p %u\n", req, req->actual);
+>>>>>>> common/android-3.10.y
 		xfer = (req->actual < count) ? req->actual : count;
 		r = xfer;
 		if (copy_to_user(buf, req->buf, xfer))
@@ -605,7 +659,11 @@ requeue_req:
 		r = -EIO;
 
 done:
+<<<<<<< HEAD
 	pr_debug("acc_read returning %d\n", r);
+=======
+	pr_debug("acc_read returning %zd\n", r);
+>>>>>>> common/android-3.10.y
 	return r;
 }
 
@@ -614,6 +672,7 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 {
 	struct acc_dev *dev = fp->private_data;
 	struct usb_request *req = 0;
+<<<<<<< HEAD
 	int r = count, xfer;
 	int ret;
 
@@ -621,6 +680,18 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 
 	if (!dev->online || dev->disconnected)
 		return -ENODEV;
+=======
+	ssize_t r = count;
+	unsigned xfer;
+	int ret;
+
+	pr_debug("acc_write(%zu)\n", count);
+
+	if (!dev->online || dev->disconnected) {
+		pr_debug("acc_write disconnected or not online");
+		return -ENODEV;
+	}
+>>>>>>> common/android-3.10.y
 
 	while (count > 0) {
 		if (!dev->online) {
@@ -638,10 +709,24 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 			break;
 		}
 
+<<<<<<< HEAD
 		if (count > BULK_BUFFER_SIZE)
 			xfer = BULK_BUFFER_SIZE;
 		else
 			xfer = count;
+=======
+		if (count > BULK_BUFFER_SIZE) {
+			xfer = BULK_BUFFER_SIZE;
+			/* ZLP, They will be more TX requests so not yet. */
+			req->zero = 0;
+		} else {
+			xfer = count;
+			/* If the data length is a multple of the
+			 * maxpacket size then send a zero length packet(ZLP).
+			*/
+			req->zero = ((xfer % dev->ep_in->maxpacket) == 0);
+		}
+>>>>>>> common/android-3.10.y
 		if (copy_from_user(req->buf, buf, xfer)) {
 			r = -EFAULT;
 			break;
@@ -665,7 +750,11 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 	if (req)
 		req_put(dev, &dev->tx_idle, req);
 
+<<<<<<< HEAD
 	pr_debug("acc_write returning %d\n", r);
+=======
+	pr_debug("acc_write returning %zd\n", r);
+>>>>>>> common/android-3.10.y
 	return r;
 }
 
@@ -840,7 +929,11 @@ static int acc_ctrlrequest(struct usb_composite_dev *cdev,
 			*((u16 *)cdev->req->buf) = PROTOCOL_VERSION;
 			value = sizeof(u16);
 
+<<<<<<< HEAD
 			/* clear strings left over from a previous session */
+=======
+			/* clear any string left over from a previous session */
+>>>>>>> common/android-3.10.y
 			memset(dev->manufacturer, 0, sizeof(dev->manufacturer));
 			memset(dev->model, 0, sizeof(dev->model));
 			memset(dev->description, 0, sizeof(dev->description));
@@ -1062,6 +1155,7 @@ static int acc_function_set_alt(struct usb_function *f,
 	DBG(cdev, "acc_function_set_alt intf: %d alt: %d\n", intf, alt);
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
+<<<<<<< HEAD
 	if (ret) {
 		dev->ep_in->desc = NULL;
 		ERROR(cdev, "config_ep_by_speed failes for ep %s, result %d\n",
@@ -1087,6 +1181,21 @@ static int acc_function_set_alt(struct usb_function *f,
 	if (ret) {
 		ERROR(cdev, "failed to enable ep %s, result %d\n",
 				dev->ep_out->name, ret);
+=======
+	if (ret)
+		return ret;
+
+	ret = usb_ep_enable(dev->ep_in);
+	if (ret)
+		return ret;
+
+	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
+	if (ret)
+		return ret;
+
+	ret = usb_ep_enable(dev->ep_out);
+	if (ret) {
+>>>>>>> common/android-3.10.y
 		usb_ep_disable(dev->ep_in);
 		return ret;
 	}
@@ -1133,7 +1242,11 @@ static int acc_bind_config(struct usb_configuration *c)
 	dev->cdev = c->cdev;
 	dev->function.name = "accessory";
 	dev->function.strings = acc_strings,
+<<<<<<< HEAD
 	dev->function.descriptors = fs_acc_descs;
+=======
+	dev->function.fs_descriptors = fs_acc_descs;
+>>>>>>> common/android-3.10.y
 	dev->function.hs_descriptors = hs_acc_descs;
 	dev->function.bind = acc_function_bind;
 	dev->function.unbind = acc_function_unbind;

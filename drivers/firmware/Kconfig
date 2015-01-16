@@ -36,6 +36,7 @@ config FIRMWARE_MEMMAP
 
       See also Documentation/ABI/testing/sysfs-firmware-memmap.
 
+<<<<<<< HEAD
 config EFI_VARS
 	tristate "EFI Variable Support via sysfs"
 	depends on EFI
@@ -71,6 +72,8 @@ config EFI_VARS_PSTORE_DEFAULT_DISABLE
 	  backend for pstore by default. This setting can be overridden
 	  using the efivars module's pstore_disable parameter.
 
+=======
+>>>>>>> common/android-3.10.y
 config EFI_PCDP
 	bool "Console device selection via EFI PCDP or HCDP table"
 	depends on ACPI && EFI && IA64
@@ -164,5 +167,6 @@ config ISCSI_IBFT
 	  Otherwise, say N.
 
 source "drivers/firmware/google/Kconfig"
+source "drivers/firmware/efi/Kconfig"
 
 endmenu

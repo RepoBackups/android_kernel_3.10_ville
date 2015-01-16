@@ -172,10 +172,14 @@ enum {
 #ifdef CONFIG_MSM_PROC_COMM
 void msm_proc_comm_reset_modem_now(void);
 int msm_proc_comm(unsigned cmd, unsigned *data1, unsigned *data2);
+<<<<<<< HEAD:arch/arm/mach-msm/include/mach/proc_comm.h
 #else
 static inline void msm_proc_comm_reset_modem_now(void) { }
 static inline int msm_proc_comm(unsigned cmd, unsigned *data1, unsigned *data2)
 { return 0; }
 #endif
+=======
+void proc_comm_boot_wait(void);
+>>>>>>> common/android-3.10.y:arch/arm/mach-msm/proc_comm.h
 
 #endif

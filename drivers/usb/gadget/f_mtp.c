@@ -67,9 +67,12 @@
 #define MTP_RESPONSE_OK             0x2001
 #define MTP_RESPONSE_DEVICE_BUSY    0x2019
 
+<<<<<<< HEAD
 unsigned int mtp_rx_req_len = MTP_BULK_BUFFER_SIZE;
 module_param(mtp_rx_req_len, uint, S_IRUGO | S_IWUSR);
 
+=======
+>>>>>>> common/android-3.10.y
 static const char mtp_shortname[] = "mtp_usb";
 
 struct mtp_dev {
@@ -272,6 +275,20 @@ struct mtp_device_status {
 	__le16	wCode;
 };
 
+<<<<<<< HEAD
+=======
+struct mtp_data_header {
+	/* length of packet, including this header */
+	__le32	length;
+	/* container type (2 for data packet) */
+	__le16	type;
+	/* MTP command code */
+	__le16	command;
+	/* MTP transaction ID */
+	__le32	transaction_id;
+};
+
+>>>>>>> common/android-3.10.y
 /* temporary variable used between mtp_open() and mtp_gadget_bind() */
 static struct mtp_dev *_mtp_dev;
 
@@ -430,6 +447,7 @@ static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
 		req->complete = mtp_complete_in;
 		mtp_req_put(dev, &dev->tx_idle, req);
 	}
+<<<<<<< HEAD
 retry_rx_alloc:
 	for (i = 0; i < RX_REQ_MAX; i++) {
 		req = mtp_request_new(dev->ep_out, mtp_rx_req_len);
@@ -441,6 +459,12 @@ retry_rx_alloc:
 			mtp_rx_req_len = MTP_BULK_BUFFER_SIZE;
 			goto retry_rx_alloc;
 		}
+=======
+	for (i = 0; i < RX_REQ_MAX; i++) {
+		req = mtp_request_new(dev->ep_out, MTP_BULK_BUFFER_SIZE);
+		if (!req)
+			goto fail;
+>>>>>>> common/android-3.10.y
 		req->complete = mtp_complete_out;
 		dev->rx_req[i] = req;
 	}
@@ -465,12 +489,22 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 	struct mtp_dev *dev = fp->private_data;
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct usb_request *req;
+<<<<<<< HEAD
 	int r = count, xfer;
 	int ret = 0;
 
 	DBG(cdev, "mtp_read(%d)\n", count);
 
 	if (count > mtp_rx_req_len)
+=======
+	ssize_t r = count;
+	unsigned xfer;
+	int ret = 0;
+
+	DBG(cdev, "mtp_read(%zu)\n", count);
+
+	if (count > MTP_BULK_BUFFER_SIZE)
+>>>>>>> common/android-3.10.y
 		return -EINVAL;
 
 	/* we will block until we're online */
@@ -505,6 +539,7 @@ requeue_req:
 	}
 
 	/* wait for a request to complete */
+<<<<<<< HEAD
 	ret = wait_event_interruptible(dev->read_wq,
 				dev->rx_done || dev->state != STATE_BUSY);
 	if (dev->state == STATE_CANCELED) {
@@ -516,6 +551,9 @@ requeue_req:
 		spin_unlock_irq(&dev->lock);
 		goto done;
 	}
+=======
+	ret = wait_event_interruptible(dev->read_wq, dev->rx_done);
+>>>>>>> common/android-3.10.y
 	if (ret < 0) {
 		r = ret;
 		usb_ep_dequeue(dev->ep_out, req);
@@ -542,7 +580,11 @@ done:
 		dev->state = STATE_READY;
 	spin_unlock_irq(&dev->lock);
 
+<<<<<<< HEAD
 	DBG(cdev, "mtp_read returning %d\n", r);
+=======
+	DBG(cdev, "mtp_read returning %zd\n", r);
+>>>>>>> common/android-3.10.y
 	return r;
 }
 
@@ -552,11 +594,20 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 	struct mtp_dev *dev = fp->private_data;
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct usb_request *req = 0;
+<<<<<<< HEAD
 	int r = count, xfer;
 	int sendZLP = 0;
 	int ret;
 
 	DBG(cdev, "mtp_write(%d)\n", count);
+=======
+	ssize_t r = count;
+	unsigned xfer;
+	int sendZLP = 0;
+	int ret;
+
+	DBG(cdev, "mtp_write(%zu)\n", count);
+>>>>>>> common/android-3.10.y
 
 	spin_lock_irq(&dev->lock);
 	if (dev->state == STATE_CANCELED) {
@@ -633,7 +684,11 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 		dev->state = STATE_READY;
 	spin_unlock_irq(&dev->lock);
 
+<<<<<<< HEAD
 	DBG(cdev, "mtp_write returning %d\n", r);
+=======
+	DBG(cdev, "mtp_write returning %zd\n", r);
+>>>>>>> common/android-3.10.y
 	return r;
 }
 
@@ -720,8 +775,12 @@ static void send_file_work(struct work_struct *data)
 		ret = usb_ep_queue(dev->ep_in, req, GFP_KERNEL);
 		if (ret < 0) {
 			DBG(cdev, "send_file_work: xfer error %d\n", ret);
+<<<<<<< HEAD
 			if (dev->state != STATE_OFFLINE)
 				dev->state = STATE_ERROR;
+=======
+			dev->state = STATE_ERROR;
+>>>>>>> common/android-3.10.y
 			r = -EIO;
 			break;
 		}
@@ -768,14 +827,23 @@ static void receive_file_work(struct work_struct *data)
 			read_req = dev->rx_req[cur_buf];
 			cur_buf = (cur_buf + 1) % RX_REQ_MAX;
 
+<<<<<<< HEAD
 			read_req->length = (count > mtp_rx_req_len
 					? mtp_rx_req_len : count);
+=======
+			read_req->length = (count > MTP_BULK_BUFFER_SIZE
+					? MTP_BULK_BUFFER_SIZE : count);
+>>>>>>> common/android-3.10.y
 			dev->rx_done = 0;
 			ret = usb_ep_queue(dev->ep_out, read_req, GFP_KERNEL);
 			if (ret < 0) {
 				r = -EIO;
+<<<<<<< HEAD
 				if (dev->state != STATE_OFFLINE)
 					dev->state = STATE_ERROR;
+=======
+				dev->state = STATE_ERROR;
+>>>>>>> common/android-3.10.y
 				break;
 			}
 		}
@@ -787,8 +855,12 @@ static void receive_file_work(struct work_struct *data)
 			DBG(cdev, "vfs_write %d\n", ret);
 			if (ret != write_req->actual) {
 				r = -EIO;
+<<<<<<< HEAD
 				if (dev->state != STATE_OFFLINE)
 					dev->state = STATE_ERROR;
+=======
+				dev->state = STATE_ERROR;
+>>>>>>> common/android-3.10.y
 				break;
 			}
 			write_req = NULL;
@@ -798,8 +870,12 @@ static void receive_file_work(struct work_struct *data)
 			/* wait for our last read to complete */
 			ret = wait_event_interruptible(dev->read_wq,
 				dev->rx_done || dev->state != STATE_BUSY);
+<<<<<<< HEAD
 			if (dev->state == STATE_CANCELED
 					|| dev->state == STATE_OFFLINE) {
+=======
+			if (dev->state == STATE_CANCELED) {
+>>>>>>> common/android-3.10.y
 				r = -ECANCELED;
 				if (!dev->rx_done)
 					usb_ep_dequeue(dev->ep_out, read_req);
@@ -836,7 +912,11 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 	int ret;
 	int length = event->length;
 
+<<<<<<< HEAD
 	DBG(dev->cdev, "mtp_send_event(%d)\n", event->length);
+=======
+	DBG(dev->cdev, "mtp_send_event(%zu)\n", event->length);
+>>>>>>> common/android-3.10.y
 
 	if (length < 0 || length > INTR_BUFFER_SIZE)
 		return -EINVAL;
@@ -1109,7 +1189,10 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 	if (id < 0)
 		return id;
 	mtp_interface_desc.bInterfaceNumber = id;
+<<<<<<< HEAD
 	mtp_ext_config_desc.function.bFirstInterfaceNumber = id;
+=======
+>>>>>>> common/android-3.10.y
 
 	/* allocate endpoints */
 	ret = mtp_create_bulk_endpoints(dev, &mtp_fullspeed_in_desc,
@@ -1157,6 +1240,7 @@ static int mtp_function_set_alt(struct usb_function *f,
 	DBG(cdev, "mtp_function_set_alt intf: %d alt: %d\n", intf, alt);
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
+<<<<<<< HEAD
 	if (ret) {
 		dev->ep_in->desc = NULL;
 		ERROR(cdev, "config_ep_by_speed failes for ep %s, result %d\n",
@@ -1186,6 +1270,29 @@ static int mtp_function_set_alt(struct usb_function *f,
 		return ret;
 	}
 	dev->ep_intr->desc = &mtp_intr_desc;
+=======
+	if (ret)
+		return ret;
+
+	ret = usb_ep_enable(dev->ep_in);
+	if (ret)
+		return ret;
+
+	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
+	if (ret)
+		return ret;
+
+	ret = usb_ep_enable(dev->ep_out);
+	if (ret) {
+		usb_ep_disable(dev->ep_in);
+		return ret;
+	}
+
+	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_intr);
+	if (ret)
+		return ret;
+
+>>>>>>> common/android-3.10.y
 	ret = usb_ep_enable(dev->ep_intr);
 	if (ret) {
 		usb_ep_disable(dev->ep_out);
@@ -1236,10 +1343,17 @@ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
 	dev->function.name = "mtp";
 	dev->function.strings = mtp_strings;
 	if (ptp_config) {
+<<<<<<< HEAD
 		dev->function.descriptors = fs_ptp_descs;
 		dev->function.hs_descriptors = hs_ptp_descs;
 	} else {
 		dev->function.descriptors = fs_mtp_descs;
+=======
+		dev->function.fs_descriptors = fs_ptp_descs;
+		dev->function.hs_descriptors = hs_ptp_descs;
+	} else {
+		dev->function.fs_descriptors = fs_mtp_descs;
+>>>>>>> common/android-3.10.y
 		dev->function.hs_descriptors = hs_mtp_descs;
 	}
 	dev->function.bind = mtp_function_bind;

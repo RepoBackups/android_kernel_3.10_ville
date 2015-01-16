@@ -14,9 +14,16 @@
 #define __GPIO_IR_RECV_H__
 
 struct gpio_ir_recv_platform_data {
+<<<<<<< HEAD
 	unsigned int gpio_nr;
 	bool active_low;
 	bool can_wakeup;
+=======
+	int		gpio_nr;
+	bool		active_low;
+	u64		allowed_protos;
+	const char	*map_name;
+>>>>>>> common/android-3.10.y
 };
 
 #endif /* __GPIO_IR_RECV_H__ */

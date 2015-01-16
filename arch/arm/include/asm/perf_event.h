@@ -12,6 +12,7 @@
 #ifndef __ARM_PERF_EVENT_H__
 #define __ARM_PERF_EVENT_H__
 
+<<<<<<< HEAD
 /* ARM perf PMU IDs for use by internal perf clients. */
 enum arm_perf_pmu_ids {
 	ARM_PERF_PMU_ID_XSCALE1	= 0,
@@ -31,8 +32,22 @@ enum arm_perf_pmu_ids {
 	ARM_PERF_PMU_ID_KRAIT_L2,
 	ARM_NUM_PMU_IDS,
 };
+=======
+/*
+ * The ARMv7 CPU PMU supports up to 32 event counters.
+ */
+#define ARMPMU_MAX_HWEVENTS		32
 
-extern enum arm_perf_pmu_ids
-armpmu_get_pmu_id(void);
+#define HW_OP_UNSUPPORTED		0xFFFF
+#define C(_x)				PERF_COUNT_HW_CACHE_##_x
+#define CACHE_OP_UNSUPPORTED		0xFFFF
+>>>>>>> common/android-3.10.y
+
+#ifdef CONFIG_HW_PERF_EVENTS
+struct pt_regs;
+extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+extern unsigned long perf_misc_flags(struct pt_regs *regs);
+#define perf_misc_flags(regs)	perf_misc_flags(regs)
+#endif
 
 #endif /* __ARM_PERF_EVENT_H__ */

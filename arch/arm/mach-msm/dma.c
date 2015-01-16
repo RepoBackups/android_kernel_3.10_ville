@@ -23,6 +23,7 @@
 #include <linux/spinlock.h>
 #include <linux/pm_runtime.h>
 #include <mach/dma.h>
+#include <mach/msm_iomap.h>
 
 #define MODULE_NAME "msm_dmov"
 
@@ -210,6 +211,31 @@ static struct msm_dmov_conf dmov_conf[] = {
 #else
 #define DMOV_IRQ_TO_ADM(irq) 0
 #endif
+
+#define DMOV_SD0(off, ch) (MSM_DMOV_BASE + 0x0000 + (off) + ((ch) << 2))
+#define DMOV_SD1(off, ch) (MSM_DMOV_BASE + 0x0400 + (off) + ((ch) << 2))
+#define DMOV_SD2(off, ch) (MSM_DMOV_BASE + 0x0800 + (off) + ((ch) << 2))
+#define DMOV_SD3(off, ch) (MSM_DMOV_BASE + 0x0C00 + (off) + ((ch) << 2))
+
+#if defined(CONFIG_ARCH_MSM7X30)
+#define DMOV_SD_AARM DMOV_SD2
+#else
+#define DMOV_SD_AARM DMOV_SD3
+#endif
+
+#define DMOV_CMD_PTR(ch)      DMOV_SD_AARM(0x000, ch)
+#define DMOV_RSLT(ch)         DMOV_SD_AARM(0x040, ch)
+#define DMOV_FLUSH0(ch)       DMOV_SD_AARM(0x080, ch)
+#define DMOV_FLUSH1(ch)       DMOV_SD_AARM(0x0C0, ch)
+#define DMOV_FLUSH2(ch)       DMOV_SD_AARM(0x100, ch)
+#define DMOV_FLUSH3(ch)       DMOV_SD_AARM(0x140, ch)
+#define DMOV_FLUSH4(ch)       DMOV_SD_AARM(0x180, ch)
+#define DMOV_FLUSH5(ch)       DMOV_SD_AARM(0x1C0, ch)
+
+#define DMOV_STATUS(ch)       DMOV_SD_AARM(0x200, ch)
+#define DMOV_ISR              DMOV_SD_AARM(0x380, 0)
+
+#define DMOV_CONFIG(ch)       DMOV_SD_AARM(0x300, ch)
 
 enum {
 	MSM_DMOV_PRINT_ERRORS = 1,
@@ -559,8 +585,19 @@ static irqreturn_t msm_dmov_isr(int irq, void *dev_id)
 			ch_status = readl_relaxed(DMOV_REG(DMOV_STATUS(ch),
 						  adm));
 			PRINT_FLOW("msm_datamover_irq_handler id %d, status %x\n", id, ch_status);
+<<<<<<< HEAD
 			if (ch_status & DMOV_STATUS_CMD_PTR_RDY)
 				start_ready_cmd(ch, adm);
+=======
+			if ((ch_status & DMOV_STATUS_CMD_PTR_RDY) && !list_empty(&ready_commands[id])) {
+				cmd = list_entry(ready_commands[id].next, typeof(*cmd), list);
+				list_move_tail(&cmd->list, &active_commands[id]);
+				if (cmd->execute_func)
+					cmd->execute_func(cmd);
+				PRINT_FLOW("msm_datamover_irq_handler id %d, start command\n", id);
+				writel(cmd->cmdptr, DMOV_CMD_PTR(id));
+			}
+>>>>>>> common/android-3.10.y
 		} while (ch_status & DMOV_STATUS_RSLT_VALID);
 		if (list_empty(&dmov_conf[adm].active_commands[ch]) &&
 		    list_empty(&dmov_conf[adm].ready_commands[ch]))

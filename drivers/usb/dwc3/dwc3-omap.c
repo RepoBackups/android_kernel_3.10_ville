@@ -43,12 +43,19 @@
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/dwc3-omap.h>
+#include <linux/usb/dwc3-omap.h>
+#include <linux/pm_runtime.h>
 #include <linux/dma-mapping.h>
 #include <linux/ioport.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_platform.h>
 
+<<<<<<< HEAD
 #include "core.h"
+=======
+#include <linux/usb/otg.h>
+>>>>>>> common/android-3.10.y
 
 /*
  * All these registers belong to OMAP's Wrapper around the
@@ -75,23 +82,6 @@
 
 /* SYSCONFIG REGISTER */
 #define USBOTGSS_SYSCONFIG_DMADISABLE		(1 << 16)
-#define USBOTGSS_SYSCONFIG_STANDBYMODE(x)	((x) << 4)
-
-#define USBOTGSS_STANDBYMODE_FORCE_STANDBY	0
-#define USBOTGSS_STANDBYMODE_NO_STANDBY		1
-#define USBOTGSS_STANDBYMODE_SMART_STANDBY	2
-#define USBOTGSS_STANDBYMODE_SMART_WAKEUP	3
-
-#define USBOTGSS_STANDBYMODE_MASK		(0x03 << 4)
-
-#define USBOTGSS_SYSCONFIG_IDLEMODE(x)		((x) << 2)
-
-#define USBOTGSS_IDLEMODE_FORCE_IDLE		0
-#define USBOTGSS_IDLEMODE_NO_IDLE		1
-#define USBOTGSS_IDLEMODE_SMART_IDLE		2
-#define USBOTGSS_IDLEMODE_SMART_WAKEUP		3
-
-#define USBOTGSS_IDLEMODE_MASK			(0x03 << 2)
 
 /* IRQ_EOI REGISTER */
 #define USBOTGSS_IRQ_EOI_LINE_NUMBER		(1 << 0)
@@ -130,28 +120,93 @@ struct dwc3_omap {
 	/* device lock */
 	spinlock_t		lock;
 
-	struct platform_device	*dwc3;
 	struct device		*dev;
 
 	int			irq;
 	void __iomem		*base;
 
-	void			*context;
-	u32			resource_size;
+	u32			utmi_otg_status;
 
 	u32			dma_status:1;
 };
 
+<<<<<<< HEAD
 static inline u32 dwc3_omap_readl(void __iomem *base, u32 offset)
 {
 	return readl_relaxed(base + offset);
+=======
+static struct dwc3_omap		*_omap;
+
+static inline u32 dwc3_omap_readl(void __iomem *base, u32 offset)
+{
+	return readl(base + offset);
+>>>>>>> common/android-3.10.y
 }
 
 static inline void dwc3_omap_writel(void __iomem *base, u32 offset, u32 value)
 {
+<<<<<<< HEAD
 	writel_relaxed(value, base + offset);
 }
 
+=======
+	writel(value, base + offset);
+}
+
+int dwc3_omap_mailbox(enum omap_dwc3_vbus_id_status status)
+{
+	u32			val;
+	struct dwc3_omap	*omap = _omap;
+
+	if (!omap)
+		return -EPROBE_DEFER;
+
+	switch (status) {
+	case OMAP_DWC3_ID_GROUND:
+		dev_dbg(omap->dev, "ID GND\n");
+
+		val = dwc3_omap_readl(omap->base, USBOTGSS_UTMI_OTG_STATUS);
+		val &= ~(USBOTGSS_UTMI_OTG_STATUS_IDDIG
+				| USBOTGSS_UTMI_OTG_STATUS_VBUSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_SESSEND);
+		val |= USBOTGSS_UTMI_OTG_STATUS_SESSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_POWERPRESENT;
+		dwc3_omap_writel(omap->base, USBOTGSS_UTMI_OTG_STATUS, val);
+		break;
+
+	case OMAP_DWC3_VBUS_VALID:
+		dev_dbg(omap->dev, "VBUS Connect\n");
+
+		val = dwc3_omap_readl(omap->base, USBOTGSS_UTMI_OTG_STATUS);
+		val &= ~USBOTGSS_UTMI_OTG_STATUS_SESSEND;
+		val |= USBOTGSS_UTMI_OTG_STATUS_IDDIG
+				| USBOTGSS_UTMI_OTG_STATUS_VBUSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_SESSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_POWERPRESENT;
+		dwc3_omap_writel(omap->base, USBOTGSS_UTMI_OTG_STATUS, val);
+		break;
+
+	case OMAP_DWC3_ID_FLOAT:
+	case OMAP_DWC3_VBUS_OFF:
+		dev_dbg(omap->dev, "VBUS Disconnect\n");
+
+		val = dwc3_omap_readl(omap->base, USBOTGSS_UTMI_OTG_STATUS);
+		val &= ~(USBOTGSS_UTMI_OTG_STATUS_SESSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_VBUSVALID
+				| USBOTGSS_UTMI_OTG_STATUS_POWERPRESENT);
+		val |= USBOTGSS_UTMI_OTG_STATUS_SESSEND
+				| USBOTGSS_UTMI_OTG_STATUS_IDDIG;
+		dwc3_omap_writel(omap->base, USBOTGSS_UTMI_OTG_STATUS, val);
+		break;
+
+	default:
+		dev_dbg(omap->dev, "ID float\n");
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(dwc3_omap_mailbox);
+>>>>>>> common/android-3.10.y
 
 static irqreturn_t dwc3_omap_interrupt(int irq, void *_omap)
 {
@@ -204,26 +259,66 @@ static irqreturn_t dwc3_omap_interrupt(int irq, void *_omap)
 	return IRQ_HANDLED;
 }
 
-static int __devinit dwc3_omap_probe(struct platform_device *pdev)
+static int dwc3_omap_remove_core(struct device *dev, void *c)
 {
-	struct dwc3_omap_data	*pdata = pdev->dev.platform_data;
+	struct platform_device *pdev = to_platform_device(dev);
+
+	platform_device_unregister(pdev);
+
+	return 0;
+}
+
+static void dwc3_omap_enable_irqs(struct dwc3_omap *omap)
+{
+	u32			reg;
+
+	/* enable all IRQs */
+	reg = USBOTGSS_IRQO_COREIRQ_ST;
+	dwc3_omap_writel(omap->base, USBOTGSS_IRQENABLE_SET_0, reg);
+
+	reg = (USBOTGSS_IRQ1_OEVT |
+			USBOTGSS_IRQ1_DRVVBUS_RISE |
+			USBOTGSS_IRQ1_CHRGVBUS_RISE |
+			USBOTGSS_IRQ1_DISCHRGVBUS_RISE |
+			USBOTGSS_IRQ1_IDPULLUP_RISE |
+			USBOTGSS_IRQ1_DRVVBUS_FALL |
+			USBOTGSS_IRQ1_CHRGVBUS_FALL |
+			USBOTGSS_IRQ1_DISCHRGVBUS_FALL |
+			USBOTGSS_IRQ1_IDPULLUP_FALL);
+
+	dwc3_omap_writel(omap->base, USBOTGSS_IRQENABLE_SET_1, reg);
+}
+
+static void dwc3_omap_disable_irqs(struct dwc3_omap *omap)
+{
+	/* disable all IRQs */
+	dwc3_omap_writel(omap->base, USBOTGSS_IRQENABLE_SET_1, 0x00);
+	dwc3_omap_writel(omap->base, USBOTGSS_IRQENABLE_SET_0, 0x00);
+}
+
+static u64 dwc3_omap_dma_mask = DMA_BIT_MASK(32);
+
+static int dwc3_omap_probe(struct platform_device *pdev)
+{
 	struct device_node	*node = pdev->dev.of_node;
 
-	struct platform_device	*dwc3;
 	struct dwc3_omap	*omap;
 	struct resource		*res;
 	struct device		*dev = &pdev->dev;
 
-	int			devid;
-	int			size;
 	int			ret = -ENOMEM;
 	int			irq;
 
-	const u32		*utmi_mode;
+	int			utmi_mode = 0;
+
 	u32			reg;
 
 	void __iomem		*base;
-	void			*context;
+
+	if (!node) {
+		dev_err(dev, "device node not found\n");
+		return -EINVAL;
+	}
 
 	omap = devm_kzalloc(dev, sizeof(*omap), GFP_KERNEL);
 	if (!omap) {
@@ -233,13 +328,13 @@ static int __devinit dwc3_omap_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, omap);
 
-	irq = platform_get_irq(pdev, 1);
+	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		dev_err(dev, "missing IRQ resource\n");
 		return -EINVAL;
 	}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(dev, "missing memory base resource\n");
 		return -EINVAL;
@@ -251,33 +346,12 @@ static int __devinit dwc3_omap_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	devid = dwc3_get_device_id();
-	if (devid < 0)
-		return -ENODEV;
-
-	dwc3 = platform_device_alloc("dwc3", devid);
-	if (!dwc3) {
-		dev_err(dev, "couldn't allocate dwc3 device\n");
-		goto err1;
-	}
-
-	context = devm_kzalloc(dev, resource_size(res), GFP_KERNEL);
-	if (!context) {
-		dev_err(dev, "couldn't allocate dwc3 context memory\n");
-		goto err2;
-	}
-
 	spin_lock_init(&omap->lock);
-	dma_set_coherent_mask(&dwc3->dev, dev->coherent_dma_mask);
 
-	dwc3->dev.parent = dev;
-	dwc3->dev.dma_mask = dev->dma_mask;
-	dwc3->dev.dma_parms = dev->dma_parms;
-	omap->resource_size = resource_size(res);
-	omap->context	= context;
 	omap->dev	= dev;
 	omap->irq	= irq;
 	omap->base	= base;
+<<<<<<< HEAD
 	omap->dwc3	= dwc3;
 
 	reg = dwc3_omap_readl(omap->base, USBOTGSS_UTMI_OTG_STATUS);
@@ -308,24 +382,57 @@ static int __devinit dwc3_omap_probe(struct platform_device *pdev)
 	/* check the DMA Status */
 	reg = dwc3_omap_readl(omap->base, USBOTGSS_SYSCONFIG);
 	omap->dma_status = !!(reg & USBOTGSS_SYSCONFIG_DMADISABLE);
+=======
+	dev->dma_mask	= &dwc3_omap_dma_mask;
 
-	/* Set No-Idle and No-Standby */
-	reg &= ~(USBOTGSS_STANDBYMODE_MASK
-			| USBOTGSS_IDLEMODE_MASK);
+	/*
+	 * REVISIT if we ever have two instances of the wrapper, we will be
+	 * in big trouble
+	 */
+	_omap	= omap;
 
-	reg |= (USBOTGSS_SYSCONFIG_STANDBYMODE(USBOTGSS_STANDBYMODE_NO_STANDBY)
-		| USBOTGSS_SYSCONFIG_IDLEMODE(USBOTGSS_IDLEMODE_NO_IDLE));
+	pm_runtime_enable(dev);
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		dev_err(dev, "get_sync failed with err %d\n", ret);
+		return ret;
+	}
 
+	reg = dwc3_omap_readl(omap->base, USBOTGSS_UTMI_OTG_STATUS);
+
+	of_property_read_u32(node, "utmi-mode", &utmi_mode);
+>>>>>>> common/android-3.10.y
+
+	switch (utmi_mode) {
+	case DWC3_OMAP_UTMI_MODE_SW:
+		reg |= USBOTGSS_UTMI_OTG_STATUS_SW_MODE;
+		break;
+	case DWC3_OMAP_UTMI_MODE_HW:
+		reg &= ~USBOTGSS_UTMI_OTG_STATUS_SW_MODE;
+		break;
+	default:
+		dev_dbg(dev, "UNKNOWN utmi mode %d\n", utmi_mode);
+	}
+
+	dwc3_omap_writel(omap->base, USBOTGSS_UTMI_OTG_STATUS, reg);
+
+<<<<<<< HEAD
 	dwc3_omap_writel(omap->base, USBOTGSS_SYSCONFIG, reg);
+=======
+	/* check the DMA Status */
+	reg = dwc3_omap_readl(omap->base, USBOTGSS_SYSCONFIG);
+	omap->dma_status = !!(reg & USBOTGSS_SYSCONFIG_DMADISABLE);
+>>>>>>> common/android-3.10.y
 
 	ret = devm_request_irq(dev, omap->irq, dwc3_omap_interrupt, 0,
 			"dwc3-omap", omap);
 	if (ret) {
 		dev_err(dev, "failed to request IRQ #%d --> %d\n",
 				omap->irq, ret);
-		goto err2;
+		return ret;
 	}
 
+<<<<<<< HEAD
 	/* enable all IRQs */
 	reg = USBOTGSS_IRQO_COREIRQ_ST;
 	dwc3_omap_writel(omap->base, USBOTGSS_IRQENABLE_SET_0, reg);
@@ -344,53 +451,99 @@ static int __devinit dwc3_omap_probe(struct platform_device *pdev)
 
 	ret = platform_device_add_resources(dwc3, pdev->resource,
 			pdev->num_resources);
-	if (ret) {
-		dev_err(dev, "couldn't add resources to dwc3 device\n");
-		goto err2;
-	}
+=======
+	dwc3_omap_enable_irqs(omap);
 
-	ret = platform_device_add(dwc3);
+	ret = of_platform_populate(node, NULL, NULL, dev);
+>>>>>>> common/android-3.10.y
 	if (ret) {
-		dev_err(dev, "failed to register dwc3 device\n");
-		goto err2;
+		dev_err(&pdev->dev, "failed to create dwc3 core\n");
+		return ret;
 	}
 
 	return 0;
-
-err2:
-	platform_device_put(dwc3);
-
-err1:
-	dwc3_put_device_id(devid);
-
-	return ret;
 }
 
-static int __devexit dwc3_omap_remove(struct platform_device *pdev)
+static int dwc3_omap_remove(struct platform_device *pdev)
 {
 	struct dwc3_omap	*omap = platform_get_drvdata(pdev);
 
-	platform_device_unregister(omap->dwc3);
-
-	dwc3_put_device_id(omap->dwc3->id);
+	dwc3_omap_disable_irqs(omap);
+	device_for_each_child(&pdev->dev, NULL, dwc3_omap_remove_core);
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	return 0;
 }
 
-static const struct of_device_id of_dwc3_matach[] = {
+static const struct of_device_id of_dwc3_match[] = {
 	{
-		"ti,dwc3",
+		.compatible =	"ti,dwc3"
 	},
 	{ },
 };
-MODULE_DEVICE_TABLE(of, of_dwc3_matach);
+MODULE_DEVICE_TABLE(of, of_dwc3_match);
+
+#ifdef CONFIG_PM_SLEEP
+static int dwc3_omap_prepare(struct device *dev)
+{
+	struct dwc3_omap	*omap = dev_get_drvdata(dev);
+
+	dwc3_omap_disable_irqs(omap);
+
+	return 0;
+}
+
+static void dwc3_omap_complete(struct device *dev)
+{
+	struct dwc3_omap	*omap = dev_get_drvdata(dev);
+
+	dwc3_omap_enable_irqs(omap);
+}
+
+static int dwc3_omap_suspend(struct device *dev)
+{
+	struct dwc3_omap	*omap = dev_get_drvdata(dev);
+
+	omap->utmi_otg_status = dwc3_omap_readl(omap->base,
+			USBOTGSS_UTMI_OTG_STATUS);
+
+	return 0;
+}
+
+static int dwc3_omap_resume(struct device *dev)
+{
+	struct dwc3_omap	*omap = dev_get_drvdata(dev);
+
+	dwc3_omap_writel(omap->base, USBOTGSS_UTMI_OTG_STATUS,
+			omap->utmi_otg_status);
+
+	pm_runtime_disable(dev);
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+
+	return 0;
+}
+
+static const struct dev_pm_ops dwc3_omap_dev_pm_ops = {
+	.prepare	= dwc3_omap_prepare,
+	.complete	= dwc3_omap_complete,
+
+	SET_SYSTEM_SLEEP_PM_OPS(dwc3_omap_suspend, dwc3_omap_resume)
+};
+
+#define DEV_PM_OPS	(&dwc3_omap_dev_pm_ops)
+#else
+#define DEV_PM_OPS	NULL
+#endif /* CONFIG_PM_SLEEP */
 
 static struct platform_driver dwc3_omap_driver = {
 	.probe		= dwc3_omap_probe,
-	.remove		= __devexit_p(dwc3_omap_remove),
+	.remove		= dwc3_omap_remove,
 	.driver		= {
 		.name	= "omap-dwc3",
-		.of_match_table	= of_dwc3_matach,
+		.of_match_table	= of_dwc3_match,
+		.pm	= DEV_PM_OPS,
 	},
 };
 

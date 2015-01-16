@@ -25,7 +25,7 @@
  *          Alex Deucher
  *          Jerome Glisse
  */
-#include "drmP.h"
+#include <drm/drmP.h>
 #include "radeon_reg.h"
 #include "radeon.h"
 #include "atom.h"
@@ -99,6 +99,32 @@ static bool radeon_read_bios(struct radeon_device *rdev)
 	return true;
 }
 
+<<<<<<< HEAD
+=======
+static bool radeon_read_platform_bios(struct radeon_device *rdev)
+{
+	uint8_t __iomem *bios;
+	size_t size;
+
+	rdev->bios = NULL;
+
+	bios = pci_platform_rom(rdev->pdev, &size);
+	if (!bios) {
+		return false;
+	}
+
+	if (size == 0 || bios[0] != 0x55 || bios[1] != 0xaa) {
+		return false;
+	}
+	rdev->bios = kmemdup(bios, size, GFP_KERNEL);
+	if (rdev->bios == NULL) {
+		return false;
+	}
+
+	return true;
+}
+
+>>>>>>> common/android-3.10.y
 #ifdef CONFIG_ACPI
 /* ATRM is used to get the BIOS on the discrete cards in
  * dual-gpu systems.
@@ -156,6 +182,7 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 	acpi_handle dhandle, atrm_handle;
 	acpi_status status;
 	bool found = false;
+<<<<<<< HEAD
 
 	/* ATRM is for the discrete card only */
 	if (rdev->flags & RADEON_IS_IGP)
@@ -173,6 +200,39 @@ static bool radeon_atrm_get_bios(struct radeon_device *rdev)
 		}
 	}
 
+=======
+
+	/* ATRM is for the discrete card only */
+	if (rdev->flags & RADEON_IS_IGP)
+		return false;
+
+	while ((pdev = pci_get_class(PCI_CLASS_DISPLAY_VGA << 8, pdev)) != NULL) {
+		dhandle = DEVICE_ACPI_HANDLE(&pdev->dev);
+		if (!dhandle)
+			continue;
+
+		status = acpi_get_handle(dhandle, "ATRM", &atrm_handle);
+		if (!ACPI_FAILURE(status)) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		while ((pdev = pci_get_class(PCI_CLASS_DISPLAY_OTHER << 8, pdev)) != NULL) {
+			dhandle = ACPI_HANDLE(&pdev->dev);
+			if (!dhandle)
+				continue;
+
+			status = acpi_get_handle(dhandle, "ATRM", &atrm_handle);
+			if (!ACPI_FAILURE(status)) {
+				found = true;
+				break;
+			}
+		}
+	}
+
+>>>>>>> common/android-3.10.y
 	if (!found)
 		return false;
 
@@ -221,24 +281,28 @@ static bool ni_read_disabled_bios(struct radeon_device *rdev)
 
 	/* enable the rom */
 	WREG32(R600_BUS_CNTL, (bus_cntl & ~R600_BIOS_ROM_DIS));
-	/* Disable VGA mode */
-	WREG32(AVIVO_D1VGA_CONTROL,
-	       (d1vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
-		AVIVO_DVGA_CONTROL_TIMING_SELECT)));
-	WREG32(AVIVO_D2VGA_CONTROL,
-	       (d2vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
-		AVIVO_DVGA_CONTROL_TIMING_SELECT)));
-	WREG32(AVIVO_VGA_RENDER_CONTROL,
-	       (vga_render_control & ~AVIVO_VGA_VSTATUS_CNTL_MASK));
+	if (!ASIC_IS_NODCE(rdev)) {
+		/* Disable VGA mode */
+		WREG32(AVIVO_D1VGA_CONTROL,
+		       (d1vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
+					  AVIVO_DVGA_CONTROL_TIMING_SELECT)));
+		WREG32(AVIVO_D2VGA_CONTROL,
+		       (d2vga_control & ~(AVIVO_DVGA_CONTROL_MODE_ENABLE |
+					  AVIVO_DVGA_CONTROL_TIMING_SELECT)));
+		WREG32(AVIVO_VGA_RENDER_CONTROL,
+		       (vga_render_control & ~AVIVO_VGA_VSTATUS_CNTL_MASK));
+	}
 	WREG32(R600_ROM_CNTL, rom_cntl | R600_SCK_OVERWRITE);
 
 	r = radeon_read_bios(rdev);
 
 	/* restore regs */
 	WREG32(R600_BUS_CNTL, bus_cntl);
-	WREG32(AVIVO_D1VGA_CONTROL, d1vga_control);
-	WREG32(AVIVO_D2VGA_CONTROL, d2vga_control);
-	WREG32(AVIVO_VGA_RENDER_CONTROL, vga_render_control);
+	if (!ASIC_IS_NODCE(rdev)) {
+		WREG32(AVIVO_D1VGA_CONTROL, d1vga_control);
+		WREG32(AVIVO_D2VGA_CONTROL, d2vga_control);
+		WREG32(AVIVO_VGA_RENDER_CONTROL, vga_render_control);
+	}
 	WREG32(R600_ROM_CNTL, rom_cntl);
 	return r;
 }
@@ -619,6 +683,9 @@ bool radeon_get_bios(struct radeon_device *rdev)
 		r = radeon_read_bios(rdev);
 	if (r == false) {
 		r = radeon_read_disabled_bios(rdev);
+	}
+	if (r == false) {
+		r = radeon_read_platform_bios(rdev);
 	}
 	if (r == false || rdev->bios == NULL) {
 		DRM_ERROR("Unable to locate a BIOS ROM\n");

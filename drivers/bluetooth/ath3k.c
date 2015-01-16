@@ -81,6 +81,10 @@ static struct usb_device_id ath3k_table[] = {
 	{ USB_DEVICE(0x04CA, 0x3004) },
 	{ USB_DEVICE(0x04CA, 0x3005) },
 	{ USB_DEVICE(0x04CA, 0x3006) },
+<<<<<<< HEAD
+=======
+	{ USB_DEVICE(0x04CA, 0x3007) },
+>>>>>>> common/android-3.10.y
 	{ USB_DEVICE(0x04CA, 0x3008) },
 	{ USB_DEVICE(0x13d3, 0x3362) },
 	{ USB_DEVICE(0x0CF3, 0xE004) },
@@ -123,6 +127,10 @@ static struct usb_device_id ath3k_blist_tbl[] = {
 	{ USB_DEVICE(0x04ca, 0x3004), .driver_info = BTUSB_ATH3012 },
 	{ USB_DEVICE(0x04ca, 0x3005), .driver_info = BTUSB_ATH3012 },
 	{ USB_DEVICE(0x04ca, 0x3006), .driver_info = BTUSB_ATH3012 },
+<<<<<<< HEAD
+=======
+	{ USB_DEVICE(0x04ca, 0x3007), .driver_info = BTUSB_ATH3012 },
+>>>>>>> common/android-3.10.y
 	{ USB_DEVICE(0x04ca, 0x3008), .driver_info = BTUSB_ATH3012 },
 	{ USB_DEVICE(0x13d3, 0x3362), .driver_info = BTUSB_ATH3012 },
 	{ USB_DEVICE(0x0cf3, 0xe004), .driver_info = BTUSB_ATH3012 },
@@ -202,24 +210,44 @@ error:
 
 static int ath3k_get_state(struct usb_device *udev, unsigned char *state)
 {
-	int pipe = 0;
+	int ret, pipe = 0;
+	char *buf;
+
+	buf = kmalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
 
 	pipe = usb_rcvctrlpipe(udev, 0);
-	return usb_control_msg(udev, pipe, ATH3K_GETSTATE,
-			USB_TYPE_VENDOR | USB_DIR_IN, 0, 0,
-			state, 0x01, USB_CTRL_SET_TIMEOUT);
+	ret = usb_control_msg(udev, pipe, ATH3K_GETSTATE,
+			      USB_TYPE_VENDOR | USB_DIR_IN, 0, 0,
+			      buf, sizeof(*buf), USB_CTRL_SET_TIMEOUT);
+
+	*state = *buf;
+	kfree(buf);
+
+	return ret;
 }
 
 static int ath3k_get_version(struct usb_device *udev,
 			struct ath3k_version *version)
 {
-	int pipe = 0;
+	int ret, pipe = 0;
+	struct ath3k_version *buf;
+	const int size = sizeof(*buf);
+
+	buf = kmalloc(size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
 
 	pipe = usb_rcvctrlpipe(udev, 0);
-	return usb_control_msg(udev, pipe, ATH3K_GETVERSION,
-			USB_TYPE_VENDOR | USB_DIR_IN, 0, 0, version,
-			sizeof(struct ath3k_version),
-			USB_CTRL_SET_TIMEOUT);
+	ret = usb_control_msg(udev, pipe, ATH3K_GETVERSION,
+			      USB_TYPE_VENDOR | USB_DIR_IN, 0, 0,
+			      buf, size, USB_CTRL_SET_TIMEOUT);
+
+	memcpy(version, buf, size);
+	kfree(buf);
+
+	return ret;
 }
 
 static int ath3k_load_fwfile(struct usb_device *udev,
@@ -368,7 +396,7 @@ static int ath3k_load_syscfg(struct usb_device *udev)
 
 	ret = ath3k_get_state(udev, &fw_state);
 	if (ret < 0) {
-		BT_ERR("Can't get state to change to load configration err");
+		BT_ERR("Can't get state to change to load configuration err");
 		return -EBUSY;
 	}
 
@@ -476,6 +504,7 @@ static struct usb_driver ath3k_driver = {
 	.probe		= ath3k_probe,
 	.disconnect	= ath3k_disconnect,
 	.id_table	= ath3k_table,
+	.disable_hub_initiated_lpm = 1,
 };
 
 static int __init ath3k_init(void)

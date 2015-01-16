@@ -18,7 +18,11 @@ static inline void dev_set_cma_area(struct device *dev, struct cma *cma)
 {
 	if (dev)
 		dev->cma_area = cma;
+<<<<<<< HEAD
 	if (!dev || !dma_contiguous_default_area)
+=======
+	if (!dev && !dma_contiguous_default_area)
+>>>>>>> common/android-3.10.y
 		dma_contiguous_default_area = cma;
 }
 

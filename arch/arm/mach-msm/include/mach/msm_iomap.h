@@ -136,14 +136,33 @@
 /* Legacy single-target iomap */
 #if defined(CONFIG_ARCH_QSD8X50)
 #include "msm_iomap-8x50.h"
+<<<<<<< HEAD
 #elif defined(CONFIG_ARCH_MSM8X60)
 #include "msm_iomap-8x60.h"
 #elif defined(CONFIG_ARCH_FSM9XXX)
 #include "msm_iomap-fsm9xxx.h"
+=======
+>>>>>>> common/android-3.10.y
 #else
 #error "Target compiled without IO map\n"
 #endif
 
+<<<<<<< HEAD
+=======
+#include "msm_iomap-8x60.h"
+#include "msm_iomap-8960.h"
+
+#define MSM_DEBUG_UART_SIZE	SZ_4K
+#if defined(CONFIG_DEBUG_MSM_UART1)
+#define MSM_DEBUG_UART_BASE	0xE1000000
+#define MSM_DEBUG_UART_PHYS	MSM_UART1_PHYS
+#elif defined(CONFIG_DEBUG_MSM_UART2)
+#define MSM_DEBUG_UART_BASE	0xE1000000
+#define MSM_DEBUG_UART_PHYS	MSM_UART2_PHYS
+#elif defined(CONFIG_DEBUG_MSM_UART3)
+#define MSM_DEBUG_UART_BASE	0xE1000000
+#define MSM_DEBUG_UART_PHYS	MSM_UART3_PHYS
+>>>>>>> common/android-3.10.y
 #endif
 
 #endif

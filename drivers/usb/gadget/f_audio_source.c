@@ -14,8 +14,11 @@
  *
  */
 
+<<<<<<< HEAD
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+=======
+>>>>>>> common/android-3.10.y
 #include <linux/device.h>
 #include <linux/usb/audio.h>
 #include <linux/wait.h>
@@ -531,6 +534,7 @@ static int audio_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	pr_debug("audio_set_alt intf %d, alt %d\n", intf, alt);
 
 	ret = config_ep_by_speed(cdev->gadget, f, audio->in_ep);
+<<<<<<< HEAD
 	if (ret) {
 		audio->in_ep->desc = NULL;
 		ERROR(cdev, "config_ep_by_speed failes for ep %s, result %d\n",
@@ -543,6 +547,12 @@ static int audio_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			audio->in_ep->name, ret);
 		return ret;
 	}
+=======
+	if (ret)
+		return ret;
+
+	usb_ep_enable(audio->in_ep);
+>>>>>>> common/android-3.10.y
 	return 0;
 }
 
@@ -590,12 +600,24 @@ audio_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	ac_interface_desc.bInterfaceNumber = status;
 
+<<<<<<< HEAD
+=======
+	/* AUDIO_AC_INTERFACE */
+	ac_header_desc.baInterfaceNr[0] = status;
+
+>>>>>>> common/android-3.10.y
 	status = usb_interface_id(c, f);
 	if (status < 0)
 		goto fail;
 	as_interface_alt_0_desc.bInterfaceNumber = status;
 	as_interface_alt_1_desc.bInterfaceNumber = status;
 
+<<<<<<< HEAD
+=======
+	/* AUDIO_AS_INTERFACE */
+	ac_header_desc.baInterfaceNr[1] = status;
+
+>>>>>>> common/android-3.10.y
 	status = -ENODEV;
 
 	/* allocate our endpoint */
@@ -609,6 +631,12 @@ audio_bind(struct usb_configuration *c, struct usb_function *f)
 		hs_as_in_ep_desc.bEndpointAddress =
 			fs_as_in_ep_desc.bEndpointAddress;
 
+<<<<<<< HEAD
+=======
+	f->fs_descriptors = fs_audio_desc;
+	f->hs_descriptors = hs_audio_desc;
+
+>>>>>>> common/android-3.10.y
 	for (i = 0, status = 0; i < IN_EP_REQ_COUNT && status == 0; i++) {
 		req = audio_request_new(ep, IN_EP_MAX_PACKET_SIZE);
 		if (req) {
@@ -686,7 +714,10 @@ static int audio_pcm_close(struct snd_pcm_substream *substream)
 static int audio_pcm_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
+<<<<<<< HEAD
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
+=======
+>>>>>>> common/android-3.10.y
 	unsigned int channels = params_channels(params);
 	unsigned int rate = params_rate(params);
 
@@ -695,6 +726,7 @@ static int audio_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (channels != 2)
 		return -EINVAL;
 
+<<<<<<< HEAD
 	if (!substream->pcm->card->dev->coherent_dma_mask)
 		substream->pcm->card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
@@ -709,10 +741,15 @@ static int audio_pcm_hw_params(struct snd_pcm_substream *substream,
 	buf->bytes = params_buffer_bytes(params);
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	return 0;
+=======
+	return snd_pcm_lib_alloc_vmalloc_buffer(substream,
+		params_buffer_bytes(params));
+>>>>>>> common/android-3.10.y
 }
 
 static int audio_pcm_hw_free(struct snd_pcm_substream *substream)
 {
+<<<<<<< HEAD
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 
 	if (buf->area != NULL)
@@ -720,6 +757,9 @@ static int audio_pcm_hw_free(struct snd_pcm_substream *substream)
 					buf->area, buf->addr);
 	buf->area = NULL;
 	return 0;
+=======
+	return snd_pcm_lib_free_vmalloc_buffer(substream);
+>>>>>>> common/android-3.10.y
 }
 
 static int audio_pcm_prepare(struct snd_pcm_substream *substream)
@@ -771,6 +811,7 @@ static int audio_pcm_playback_trigger(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+<<<<<<< HEAD
 static int audio_pcm_mmap(struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
@@ -787,6 +828,8 @@ static int audio_pcm_mmap(struct snd_pcm_substream *substream,
 	}
 }
 
+=======
+>>>>>>> common/android-3.10.y
 static struct audio_dev _audio_dev = {
 	.func = {
 		.name = "audio_source",
@@ -795,8 +838,11 @@ static struct audio_dev _audio_dev = {
 		.set_alt = audio_set_alt,
 		.setup = audio_setup,
 		.disable = audio_disable,
+<<<<<<< HEAD
 		.descriptors = fs_audio_desc,
 		.hs_descriptors = hs_audio_desc,
+=======
+>>>>>>> common/android-3.10.y
 	},
 	.lock = __SPIN_LOCK_UNLOCKED(_audio_dev.lock),
 	.idle_reqs = LIST_HEAD_INIT(_audio_dev.idle_reqs),
@@ -811,7 +857,10 @@ static struct snd_pcm_ops audio_playback_ops = {
 	.prepare	= audio_pcm_prepare,
 	.trigger	= audio_pcm_playback_trigger,
 	.pointer	= audio_pcm_pointer,
+<<<<<<< HEAD
 	.mmap		= audio_pcm_mmap,
+=======
+>>>>>>> common/android-3.10.y
 };
 
 int audio_source_bind_config(struct usb_configuration *c,

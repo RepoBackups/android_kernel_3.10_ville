@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 header-y += edid.h
 header-y += sisfb.h
 header-y += uvesafb.h
 header-y += msm_hdmi_modes.h
+=======
+>>>>>>> common/android-3.10.y

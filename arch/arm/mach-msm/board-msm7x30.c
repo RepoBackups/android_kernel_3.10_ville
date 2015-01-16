@@ -13,7 +13,6 @@
 
 #include <linux/kernel.h>
 #include <linux/irq.h>
-#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/bootmem.h>
@@ -6607,6 +6606,7 @@ static int tsc2007_get_pendown_state(void)
 		return rc;
 	}
 
+<<<<<<< HEAD
 	return (rc == 0 ? 1 : 0);
 }
 
@@ -6680,6 +6680,13 @@ static int isa1200_power(int vreg_on)
 	rc = vreg_on ?
 		regulator_bulk_enable(ARRAY_SIZE(regs_isa1200), regs_isa1200) :
 		regulator_bulk_disable(ARRAY_SIZE(regs_isa1200), regs_isa1200);
+=======
+#include <mach/vreg.h>
+#include "devices.h"
+#include "gpiomux.h"
+#include "proc_comm.h"
+#include "common.h"
+>>>>>>> common/android-3.10.y
 
 	if (rc) {
 		pr_err("%s: could not %sable regulators: %d\n",
@@ -7216,6 +7223,7 @@ static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 	},
 };
 
+<<<<<<< HEAD
 unsigned long size;
 unsigned long msm_ion_camera_size;
 
@@ -7228,6 +7236,12 @@ static void fix_sizes(void)
 
 #ifdef CONFIG_ION_MSM
 	msm_ion_camera_size = size;
+=======
+static struct platform_device *devices[] __initdata = {
+	&msm_device_gpio_7x30,
+#if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
+        &msm_device_uart2,
+>>>>>>> common/android-3.10.y
 #endif
 }
 
@@ -7369,16 +7383,26 @@ static void __init msm7x30_fixup(struct tag *tags, char **cmdline,
 	}
 }
 
+static void __init msm7x30_init_late(void)
+{
+	smd_debugfs_init();
+}
+
 MACHINE_START(MSM7X30_SURF, "QCT MSM7X30 SURF")
 	.atag_offset = 0x100,
 	.map_io = msm7x30_map_io,
 	.reserve = msm7x30_reserve,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,
+<<<<<<< HEAD
 	.timer = &msm_timer,
 	.init_early = msm7x30_init_early,
 	.handle_irq = vic_handle_irq,
 	.fixup = msm7x30_fixup,
+=======
+	.init_late = msm7x30_init_late,
+	.init_time	= msm7x30_timer_init,
+>>>>>>> common/android-3.10.y
 MACHINE_END
 
 MACHINE_START(MSM7X30_FFA, "QCT MSM7X30 FFA")
@@ -7411,10 +7435,15 @@ MACHINE_START(MSM8X55_SURF, "QCT MSM8X55 SURF")
 	.reserve = msm7x30_reserve,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,
+<<<<<<< HEAD
 	.timer = &msm_timer,
 	.init_early = msm7x30_init_early,
 	.handle_irq = vic_handle_irq,
 	.fixup = msm7x30_fixup,
+=======
+	.init_late = msm7x30_init_late,
+	.init_time	= msm7x30_timer_init,
+>>>>>>> common/android-3.10.y
 MACHINE_END
 
 MACHINE_START(MSM8X55_FFA, "QCT MSM8X55 FFA")
@@ -7445,8 +7474,13 @@ MACHINE_START(MSM8X55_SVLTE_FFA, "QCT MSM8X55 SVLTE FFA")
 	.reserve = msm7x30_reserve,
 	.init_irq = msm7x30_init_irq,
 	.init_machine = msm7x30_init,
+<<<<<<< HEAD
 	.timer = &msm_timer,
 	.init_early = msm7x30_init_early,
 	.handle_irq = vic_handle_irq,
 	.fixup = msm7x30_fixup,
+=======
+	.init_late = msm7x30_init_late,
+	.init_time	= msm7x30_timer_init,
+>>>>>>> common/android-3.10.y
 MACHINE_END

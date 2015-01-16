@@ -33,12 +33,15 @@ static void xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 	 * dev struct in order to setup MSI
 	 */
 	xhci->quirks |= XHCI_PLAT;
+<<<<<<< HEAD
 
 	if (!pdata)
 		return;
 	else if (pdata->vendor == SYNOPSIS_DWC3_VENDOR &&
 			pdata->revision < 0x230A)
 		xhci->quirks |= XHCI_PORTSC_DELAY;
+=======
+>>>>>>> common/android-3.10.y
 }
 
 /* called during probe() after chip reset completes */

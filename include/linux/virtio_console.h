@@ -1,8 +1,3 @@
-#ifndef _LINUX_VIRTIO_CONSOLE_H
-#define _LINUX_VIRTIO_CONSOLE_H
-#include <linux/types.h>
-#include <linux/virtio_ids.h>
-#include <linux/virtio_config.h>
 /*
  * This header, excluding the #ifdef __KERNEL__ part, is BSD licensed so
  * anyone can use the definitions to implement compatible drivers/servers:
@@ -34,7 +29,10 @@
  * Copyright (C) Red Hat, Inc., 2009, 2010, 2011
  * Copyright (C) Amit Shah <amit.shah@redhat.com>, 2009, 2010, 2011
  */
+#ifndef _LINUX_VIRTIO_CONSOLE_H
+#define _LINUX_VIRTIO_CONSOLE_H
 
+<<<<<<< HEAD
 /* Feature bits */
 #define VIRTIO_CONSOLE_F_SIZE	0	/* Does host provide console size? */
 #define VIRTIO_CONSOLE_F_MULTIPORT 1	/* Does host provide multiple ports? */
@@ -69,9 +67,9 @@ struct virtio_console_control {
 #define VIRTIO_CONSOLE_RESIZE		5
 #define VIRTIO_CONSOLE_PORT_OPEN	6
 #define VIRTIO_CONSOLE_PORT_NAME	7
+=======
+#include <uapi/linux/virtio_console.h>
+>>>>>>> common/android-3.10.y
 
-#ifdef __KERNEL__
 int __init virtio_cons_early_init(int (*put_chars)(u32, const char *, int));
-#endif /* __KERNEL__ */
-
 #endif /* _LINUX_VIRTIO_CONSOLE_H */

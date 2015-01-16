@@ -49,6 +49,9 @@ MODULE_AUTHOR("Larry Finger	<Larry.Finger@lwfinger.net>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Realtek 8192C/8188C 802.11n USB wireless");
 MODULE_FIRMWARE("rtlwifi/rtl8192cufw.bin");
+MODULE_FIRMWARE("rtlwifi/rtl8192cufw_A.bin");
+MODULE_FIRMWARE("rtlwifi/rtl8192cufw_B.bin");
+MODULE_FIRMWARE("rtlwifi/rtl8192cufw_TMSC.bin");
 
 static int rtl92cu_init_sw_vars(struct ieee80211_hw *hw)
 {
@@ -68,15 +71,22 @@ static int rtl92cu_init_sw_vars(struct ieee80211_hw *hw)
 			 "Can't alloc buffer for fw\n");
 		return 1;
 	}
-
+	if (IS_VENDOR_UMC_A_CUT(rtlpriv->rtlhal.version) &&
+	    !IS_92C_SERIAL(rtlpriv->rtlhal.version)) {
+		rtlpriv->cfg->fw_name = "rtlwifi/rtl8192cufw_A.bin";
+	} else if (IS_81xxC_VENDOR_UMC_B_CUT(rtlpriv->rtlhal.version)) {
+		rtlpriv->cfg->fw_name = "rtlwifi/rtl8192cufw_B.bin";
+	} else {
+		rtlpriv->cfg->fw_name = "rtlwifi/rtl8192cufw_TMSC.bin";
+	}
+	/* provide name of alternative file */
+	rtlpriv->cfg->alt_fw_name = "rtlwifi/rtl8192cufw.bin";
 	pr_info("Loading firmware %s\n", rtlpriv->cfg->fw_name);
 	rtlpriv->max_fw_size = 0x4000;
 	err = request_firmware_nowait(THIS_MODULE, 1,
 				      rtlpriv->cfg->fw_name, rtlpriv->io.dev,
 				      GFP_KERNEL, hw, rtl_fw_cb);
-
-
-	return 0;
+	return err;
 }
 
 static void rtl92cu_deinit_sw_vars(struct ieee80211_hw *hw)
@@ -106,8 +116,7 @@ static struct rtl_hal_ops rtl8192cu_hal_ops = {
 	.update_interrupt_mask = rtl92cu_update_interrupt_mask,
 	.get_hw_reg = rtl92cu_get_hw_reg,
 	.set_hw_reg = rtl92cu_set_hw_reg,
-	.update_rate_tbl = rtl92cu_update_hal_rate_table,
-	.update_rate_mask = rtl92cu_update_hal_rate_mask,
+	.update_rate_tbl = rtl92cu_update_hal_rate_tbl,
 	.fill_tx_desc = rtl92cu_tx_fill_desc,
 	.fill_fake_txdesc = rtl92cu_fill_fake_txdesc,
 	.fill_tx_cmddesc = rtl92cu_tx_fill_cmddesc,
@@ -137,6 +146,7 @@ static struct rtl_hal_ops rtl8192cu_hal_ops = {
 	.phy_lc_calibrate = _rtl92cu_phy_lc_calibrate,
 	.phy_set_bw_mode_callback = rtl92cu_phy_set_bw_mode_callback,
 	.dm_dynamic_txpower = rtl92cu_dm_dynamic_txpower,
+	.fill_h2c_cmd = rtl92c_fill_h2c_cmd,
 };
 
 static struct rtl_mod_params rtl92cu_mod_params = {
@@ -223,7 +233,7 @@ static struct rtl_hal_cfg rtl92cu_hal_cfg = {
 
 	.maps[RTL_IMR_TXFOVW] = IMR_TXFOVW,
 	.maps[RTL_IMR_PSTIMEOUT] = IMR_PSTIMEOUT,
-	.maps[RTL_IMR_BcnInt] = IMR_BCNINT,
+	.maps[RTL_IMR_BCNINT] = IMR_BCNINT,
 	.maps[RTL_IMR_RXFOVW] = IMR_RXFOVW,
 	.maps[RTL_IMR_RDU] = IMR_RDU,
 	.maps[RTL_IMR_ATIMEND] = IMR_ATIMEND,
@@ -344,12 +354,14 @@ static struct usb_device_id rtl8192c_usb_ids[] = {
 	{RTL_USB_DEVICE(0x2019, 0x1201, rtl92cu_hal_cfg)}, /*Planex-Vencer*/
 
 	/****** 8192CU ********/
+	{RTL_USB_DEVICE(0x050d, 0x1004, rtl92cu_hal_cfg)}, /*Belcom-SurfN300*/
 	{RTL_USB_DEVICE(0x050d, 0x2102, rtl92cu_hal_cfg)}, /*Belcom-Sercomm*/
 	{RTL_USB_DEVICE(0x050d, 0x2103, rtl92cu_hal_cfg)}, /*Belcom-Edimax*/
 	{RTL_USB_DEVICE(0x0586, 0x341f, rtl92cu_hal_cfg)}, /*Zyxel -Abocom*/
 	{RTL_USB_DEVICE(0x07aa, 0x0056, rtl92cu_hal_cfg)}, /*ATKK-Gemtek*/
 	{RTL_USB_DEVICE(0x07b8, 0x8178, rtl92cu_hal_cfg)}, /*Funai -Abocom*/
 	{RTL_USB_DEVICE(0x0846, 0x9021, rtl92cu_hal_cfg)}, /*Netgear-Sercomm*/
+	{RTL_USB_DEVICE(0x0846, 0xf001, rtl92cu_hal_cfg)}, /*On Netwrks N300MA*/
 	{RTL_USB_DEVICE(0x0b05, 0x17ab, rtl92cu_hal_cfg)}, /*ASUS-Edimax*/
 	{RTL_USB_DEVICE(0x0bda, 0x8186, rtl92cu_hal_cfg)}, /*Realtek 92CE-VAU*/
 	{RTL_USB_DEVICE(0x0df6, 0x0061, rtl92cu_hal_cfg)}, /*Sitecom-Edimax*/
@@ -366,9 +378,15 @@ static struct usb_device_id rtl8192c_usb_ids[] = {
 
 MODULE_DEVICE_TABLE(usb, rtl8192c_usb_ids);
 
+static int rtl8192cu_probe(struct usb_interface *intf,
+			   const struct usb_device_id *id)
+{
+	return rtl_usb_probe(intf, id, &rtl92cu_hal_cfg);
+}
+
 static struct usb_driver rtl8192cu_driver = {
 	.name = "rtl8192cu",
-	.probe = rtl_usb_probe,
+	.probe = rtl8192cu_probe,
 	.disconnect = rtl_usb_disconnect,
 	.id_table = rtl8192c_usb_ids,
 
@@ -380,6 +398,7 @@ static struct usb_driver rtl8192cu_driver = {
 #ifdef CONFIG_AUTOSUSPEND
 	.supports_autosuspend = 1,
 #endif
+	.disable_hub_initiated_lpm = 1,
 };
 
 module_usb_driver(rtl8192cu_driver);

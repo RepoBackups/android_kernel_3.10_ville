@@ -17,8 +17,13 @@
 #define _LINUX_ANDROID_AID_H
 
 /* AIDs that the kernel treats differently */
+<<<<<<< HEAD
 #define AID_NET_BT_ADMIN 3001
 #define AID_NET_BT       3002
+=======
+#define AID_OBSOLETE_000 3001  /* was NET_BT_ADMIN */
+#define AID_OBSOLETE_001 3002  /* was NET_BT */
+>>>>>>> common/android-3.10.y
 #define AID_INET         3003
 #define AID_NET_RAW      3004
 #define AID_NET_ADMIN    3005

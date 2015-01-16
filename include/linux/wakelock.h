@@ -1,6 +1,10 @@
 /* include/linux/wakelock.h
  *
+<<<<<<< HEAD
  * Copyright (C) 2007-2008 Google, Inc.
+=======
+ * Copyright (C) 2007-2012 Google, Inc.
+>>>>>>> common/android-3.10.y
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,6 +20,7 @@
 #ifndef _LINUX_WAKELOCK_H
 #define _LINUX_WAKELOCK_H
 
+<<<<<<< HEAD
 #include <linux/list.h>
 #include <linux/ktime.h>
 
@@ -24,6 +29,14 @@
  * prevents a full system suspend. If the type is WAKE_LOCK_IDLE, low power
  * states that cause large interrupt latencies or that disable a set of
  * interrupts will not entered from idle until the wake_locks are released.
+=======
+#include <linux/ktime.h>
+#include <linux/device.h>
+
+/* A wake_lock prevents the system from entering suspend or other low power
+ * states when active. If the type is set to WAKE_LOCK_SUSPEND, the wake_lock
+ * prevents a full system suspend.
+>>>>>>> common/android-3.10.y
  */
 
 enum {
@@ -32,6 +45,7 @@ enum {
 };
 
 struct wake_lock {
+<<<<<<< HEAD
 #ifdef CONFIG_HAS_WAKELOCK
 	struct list_head    link;
 	int                 flags;
@@ -88,3 +102,40 @@ static inline long has_wake_lock(int type) { return 0; }
 
 #endif
 
+=======
+	struct wakeup_source ws;
+};
+
+static inline void wake_lock_init(struct wake_lock *lock, int type,
+				  const char *name)
+{
+	wakeup_source_init(&lock->ws, name);
+}
+
+static inline void wake_lock_destroy(struct wake_lock *lock)
+{
+	wakeup_source_trash(&lock->ws);
+}
+
+static inline void wake_lock(struct wake_lock *lock)
+{
+	__pm_stay_awake(&lock->ws);
+}
+
+static inline void wake_lock_timeout(struct wake_lock *lock, long timeout)
+{
+	__pm_wakeup_event(&lock->ws, jiffies_to_msecs(timeout));
+}
+
+static inline void wake_unlock(struct wake_lock *lock)
+{
+	__pm_relax(&lock->ws);
+}
+
+static inline int wake_lock_active(struct wake_lock *lock)
+{
+	return lock->ws.active;
+}
+
+#endif
+>>>>>>> common/android-3.10.y

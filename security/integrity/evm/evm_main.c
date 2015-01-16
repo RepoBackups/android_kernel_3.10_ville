@@ -26,6 +26,7 @@ int evm_initialized;
 
 char *evm_hmac = "hmac(sha1)";
 char *evm_hash = "sha1";
+int evm_hmac_version = CONFIG_EVM_HMAC_VERSION;
 
 char *evm_config_xattrnames[] = {
 #ifdef CONFIG_SECURITY_SELINUX
@@ -33,6 +34,9 @@ char *evm_config_xattrnames[] = {
 #endif
 #ifdef CONFIG_SECURITY_SMACK
 	XATTR_NAME_SMACK,
+#endif
+#ifdef CONFIG_IMA_APPRAISE
+	XATTR_NAME_IMA,
 #endif
 	XATTR_NAME_CAPS,
 	NULL
@@ -282,9 +286,18 @@ int evm_inode_setxattr(struct dentry *dentry, const char *xattr_name,
 {
 	const struct evm_ima_xattr_data *xattr_data = xattr_value;
 
+<<<<<<< HEAD
 	if ((strcmp(xattr_name, XATTR_NAME_EVM) == 0)
 	    && (xattr_data->type == EVM_XATTR_HMAC))
 		return -EPERM;
+=======
+	if (strcmp(xattr_name, XATTR_NAME_EVM) == 0) {
+		if (!xattr_value_len)
+			return -EINVAL;
+		if (xattr_data->type != EVM_IMA_XATTR_DIGSIG)
+			return -EPERM;
+	}
+>>>>>>> common/android-3.10.y
 	return evm_protect_xattr(dentry, xattr_name, xattr_value,
 				 xattr_value_len);
 }
@@ -430,15 +443,6 @@ static int __init init_evm(void)
 	return 0;
 err:
 	return error;
-}
-
-static void __exit cleanup_evm(void)
-{
-	evm_cleanup_secfs();
-	if (hmac_tfm)
-		crypto_free_shash(hmac_tfm);
-	if (hash_tfm)
-		crypto_free_shash(hash_tfm);
 }
 
 /*

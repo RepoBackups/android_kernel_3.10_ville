@@ -23,6 +23,29 @@
 
 #define MGMT_INDEX_NONE			0xFFFF
 
+<<<<<<< HEAD
+=======
+#define MGMT_STATUS_SUCCESS		0x00
+#define MGMT_STATUS_UNKNOWN_COMMAND	0x01
+#define MGMT_STATUS_NOT_CONNECTED	0x02
+#define MGMT_STATUS_FAILED		0x03
+#define MGMT_STATUS_CONNECT_FAILED	0x04
+#define MGMT_STATUS_AUTH_FAILED		0x05
+#define MGMT_STATUS_NOT_PAIRED		0x06
+#define MGMT_STATUS_NO_RESOURCES	0x07
+#define MGMT_STATUS_TIMEOUT		0x08
+#define MGMT_STATUS_ALREADY_CONNECTED	0x09
+#define MGMT_STATUS_BUSY		0x0a
+#define MGMT_STATUS_REJECTED		0x0b
+#define MGMT_STATUS_NOT_SUPPORTED	0x0c
+#define MGMT_STATUS_INVALID_PARAMS	0x0d
+#define MGMT_STATUS_DISCONNECTED	0x0e
+#define MGMT_STATUS_NOT_POWERED		0x0f
+#define MGMT_STATUS_CANCELLED		0x10
+#define MGMT_STATUS_INVALID_INDEX	0x11
+#define MGMT_STATUS_RFKILLED		0x12
+
+>>>>>>> common/android-3.10.y
 struct mgmt_hdr {
 	__le16 opcode;
 	__le16 index;
@@ -277,6 +300,15 @@ struct mgmt_cp_le_cancel_create_conn {
 	bdaddr_t	bdaddr;
 } __packed;
 
+#define MGMT_OP_SET_DEVICE_ID		0x0028
+struct mgmt_cp_set_device_id {
+	__le16	source;
+	__le16	vendor;
+	__le16	product;
+	__le16	version;
+} __packed;
+#define MGMT_SET_DEVICE_ID_SIZE		8
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	__le16 opcode;
@@ -318,10 +350,22 @@ struct mgmt_ev_connected {
 	__u8 le;
 } __packed;
 
+<<<<<<< HEAD
 #define MGMT_EV_DISCONNECTED		0x000C
 struct mgmt_ev_disconnected {
 	bdaddr_t bdaddr;
 	__u8     reason;
+=======
+#define MGMT_DEV_DISCONN_UNKNOWN	0x00
+#define MGMT_DEV_DISCONN_TIMEOUT	0x01
+#define MGMT_DEV_DISCONN_LOCAL_HOST	0x02
+#define MGMT_DEV_DISCONN_REMOTE		0x03
+
+#define MGMT_EV_DEVICE_DISCONNECTED	0x000C
+struct mgmt_ev_device_disconnected {
+	struct mgmt_addr_info addr;
+	__u8	reason;
+>>>>>>> common/android-3.10.y
 } __packed;
 
 #define MGMT_EV_CONNECT_FAILED		0x000D
@@ -357,12 +401,20 @@ struct mgmt_ev_local_name_changed {
 
 #define MGMT_EV_DEVICE_FOUND		0x0012
 struct mgmt_ev_device_found {
+<<<<<<< HEAD
 	bdaddr_t bdaddr;
 	__u8 dev_class[3];
 	__s8 rssi;
 	__u8 le;
 	__u8 type;
 	__u8 eir[HCI_MAX_EIR_LENGTH];
+=======
+	struct mgmt_addr_info addr;
+	__s8	rssi;
+	__le32	flags;
+	__le16	eir_len;
+	__u8	eir[0];
+>>>>>>> common/android-3.10.y
 } __packed;
 
 #define MGMT_EV_REMOTE_NAME		0x0013
@@ -418,4 +470,11 @@ struct mgmt_ev_le_conn_params {
 	__u16 interval;
 	__u16 latency;
 	__u16 timeout;
+} __packed;
+
+#define MGMT_EV_PASSKEY_NOTIFY		0x0017
+struct mgmt_ev_passkey_notify {
+	struct mgmt_addr_info addr;
+	__le32	passkey;
+	__u8	entered;
 } __packed;

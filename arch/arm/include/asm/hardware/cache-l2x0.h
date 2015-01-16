@@ -113,6 +113,12 @@
 #define L2X0_PREFETCH_CTRL_WRAP8_INC_SHIFT	23
 #define L2X0_PREFETCH_CTRL_WRAP8_SHIFT		30
 
+#define L2X0_CTRL_EN			1
+
+#define L2X0_WAY_SIZE_SHIFT		3
+
+#define REV_PL310_R2P0				4
+
 #ifndef __ASSEMBLY__
 extern void l2cc_suspend(void);
 extern void l2cc_resume(void);
@@ -140,6 +146,7 @@ struct l2x0_regs {
 	unsigned long filter_end;
 	unsigned long prefetch_ctrl;
 	unsigned long pwr_ctrl;
+	unsigned long ctrl;
 };
 
 extern struct l2x0_regs l2x0_saved_regs;

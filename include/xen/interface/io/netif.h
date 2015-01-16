@@ -9,8 +9,26 @@
 #ifndef __XEN_PUBLIC_IO_NETIF_H__
 #define __XEN_PUBLIC_IO_NETIF_H__
 
-#include "ring.h"
-#include "../grant_table.h"
+#include <xen/interface/io/ring.h>
+#include <xen/interface/grant_table.h>
+
+/*
+ * Older implementation of Xen network frontend / backend has an
+ * implicit dependency on the MAX_SKB_FRAGS as the maximum number of
+ * ring slots a skb can use. Netfront / netback may not work as
+ * expected when frontend and backend have different MAX_SKB_FRAGS.
+ *
+ * A better approach is to add mechanism for netfront / netback to
+ * negotiate this value. However we cannot fix all possible
+ * frontends, so we need to define a value which states the minimum
+ * slots backend must support.
+ *
+ * The minimum value derives from older Linux kernel's MAX_SKB_FRAGS
+ * (18), which is proved to work with most frontends. Any new backend
+ * which doesn't negotiate with frontend should expect frontend to
+ * send a valid packet using slots up to this value.
+ */
+#define XEN_NETIF_NR_SLOTS_MIN 18
 
 /*
  * Older implementation of Xen network frontend / backend has an

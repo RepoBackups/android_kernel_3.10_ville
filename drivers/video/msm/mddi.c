@@ -22,9 +22,84 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
+<<<<<<< HEAD
 #include <linux/delay.h>
 #include <mach/hardware.h>
 #include <asm/io.h>
+=======
+#include <linux/clk.h>
+#include <linux/io.h>
+#include <linux/sched.h>
+#include <linux/platform_data/video-msm_fb.h>
+#include "mddi_hw.h"
+
+#define FLAG_DISABLE_HIBERNATION 0x0001
+#define FLAG_HAVE_CAPS		 0x0002
+#define FLAG_HAS_VSYNC_IRQ	 0x0004
+#define FLAG_HAVE_STATUS	 0x0008
+
+#define CMD_GET_CLIENT_CAP     0x0601
+#define CMD_GET_CLIENT_STATUS  0x0602
+
+union mddi_rev {
+	unsigned char raw[MDDI_REV_BUFFER_SIZE];
+	struct mddi_rev_packet hdr;
+	struct mddi_client_status status;
+	struct mddi_client_caps caps;
+	struct mddi_register_access reg;
+};
+
+struct reg_read_info {
+	struct completion done;
+	uint32_t reg;
+	uint32_t status;
+	uint32_t result;
+};
+
+struct mddi_info {
+	uint16_t flags;
+	uint16_t version;
+	char __iomem *base;
+	int irq;
+	struct clk *clk;
+	struct msm_mddi_client_data client_data;
+
+	/* buffer for rev encap packets */
+	void *rev_data;
+	dma_addr_t rev_addr;
+	struct mddi_llentry *reg_write_data;
+	dma_addr_t reg_write_addr;
+	struct mddi_llentry *reg_read_data;
+	dma_addr_t reg_read_addr;
+	size_t rev_data_curr;
+
+	spinlock_t int_lock;
+	uint32_t int_enable;
+	uint32_t got_int;
+	wait_queue_head_t int_wait;
+
+	struct mutex reg_write_lock;
+	struct mutex reg_read_lock;
+	struct reg_read_info *reg_read;
+
+	struct mddi_client_caps caps;
+	struct mddi_client_status status;
+
+	void (*power_client)(struct msm_mddi_client_data *, int);
+
+	/* client device published to bind us to the
+	 * appropriate mddi_client driver
+	 */
+	char client_name[20];
+
+	struct platform_device client_pdev;
+};
+
+static void mddi_init_rev_encap(struct mddi_info *mddi);
+
+#define mddi_readl(r) readl(mddi->base + (MDDI_##r))
+#define mddi_writel(v, r) writel((v), mddi->base + (MDDI_##r))
+>>>>>>> common/android-3.10.y
 
 #include <asm/system.h>
 #include <asm/mach-types.h>
@@ -457,7 +532,11 @@ int mddi_client_power(unsigned int client_id)
 	return ret;
 }
 
+<<<<<<< HEAD
 void mddi_disable(int lock)
+=======
+static int mddi_get_client_caps(struct mddi_info *mddi)
+>>>>>>> common/android-3.10.y
 {
 	mddi_host_type host_idx = MDDI_HOST_PRIM;
 
@@ -510,8 +589,15 @@ static int mddi_resume(struct platform_device *pdev)
 
 	mddi_is_in_suspend = 0;
 
+<<<<<<< HEAD
 	if (mddi_power_locked)
 		return 0;
+=======
+static int mddi_clk_setup(struct platform_device *pdev, struct mddi_info *mddi,
+			  unsigned long clk_rate)
+{
+	int ret;
+>>>>>>> common/android-3.10.y
 
 	pmdh_clk_enable();
 
@@ -522,8 +608,12 @@ static int mddi_resume(struct platform_device *pdev)
 }
 #endif
 
+<<<<<<< HEAD
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void mddi_early_suspend(struct early_suspend *h)
+=======
+static int mddi_probe(struct platform_device *pdev)
+>>>>>>> common/android-3.10.y
 {
 	pm_message_t state;
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,

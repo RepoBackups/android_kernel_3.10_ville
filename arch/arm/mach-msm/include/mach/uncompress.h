@@ -42,8 +42,13 @@ static void putc(int c)
 	 * Wait for TX_READY to be set; but skip it if we have a
 	 * TX underrun.
 	 */
+<<<<<<< HEAD
 	if (!(__raw_readl_no_log(base + UARTDM_SR_OFFSET) & 0x08))
 		while (!(__raw_readl_no_log(base + UARTDM_ISR_OFFSET) & 0x80))
+=======
+	if (!(UART_DM_SR & 0x08))
+		while (!(UART_DM_ISR & 0x80))
+>>>>>>> common/android-3.10.y
 			cpu_relax();
 
 	__raw_writel_no_log(0x300, base + UARTDM_CR_OFFSET);
@@ -64,10 +69,6 @@ static inline void flush(void)
 }
 
 static inline void arch_decomp_setup(void)
-{
-}
-
-static inline void arch_decomp_wdog(void)
 {
 }
 

@@ -14,11 +14,13 @@
 /* #define VERBOSE_DEBUG */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/gfp.h>
 #include <linux/device.h>
 #include <linux/ctype.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
+#include <linux/if_vlan.h>
 
 #include "u_ether.h"
 
@@ -50,7 +52,6 @@ static struct workqueue_struct	*uether_wq;
 
 struct eth_dev {
 	/* lock is held while accessing port_usb
-	 * or updating its backlink port_usb->ioport
 	 */
 	spinlock_t		lock;
 	struct gether		*port_usb;
@@ -70,6 +71,8 @@ struct eth_dev {
 	struct sk_buff_head	rx_frames;
 
 	unsigned		header_len;
+	unsigned		ul_max_pkts_per_xfer;
+	unsigned		dl_max_pkts_per_xfer;
 	struct sk_buff		*(*wrap)(struct gether *, struct sk_buff *skb);
 	int			(*unwrap)(struct gether *,
 						struct sk_buff *skb,
@@ -91,15 +94,14 @@ struct eth_dev {
 
 #define DEFAULT_QLEN	2	/* double buffering by default */
 
+<<<<<<< HEAD
 #ifdef CONFIG_USB_GADGET_DUALSPEED
 
+=======
+>>>>>>> common/android-3.10.y
 static unsigned qmult = 10;
 module_param(qmult, uint, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(qmult, "queue length multiplier at high/super speed");
-
-#else	/* full speed (low speed doesn't do bulk) */
-#define qmult		1
-#endif
 
 /* for dual-speed hardware, use deeper queues at high/super speed */
 static inline int qlen(struct usb_gadget *gadget)
@@ -172,12 +174,12 @@ static int ueth_change_mtu(struct net_device *net, int new_mtu)
 
 static void eth_get_drvinfo(struct net_device *net, struct ethtool_drvinfo *p)
 {
-	struct eth_dev	*dev = netdev_priv(net);
+	struct eth_dev *dev = netdev_priv(net);
 
-	strlcpy(p->driver, "g_ether", sizeof p->driver);
-	strlcpy(p->version, UETH__VERSION, sizeof p->version);
-	strlcpy(p->fw_version, dev->gadget->name, sizeof p->fw_version);
-	strlcpy(p->bus_info, dev_name(&dev->gadget->dev), sizeof p->bus_info);
+	strlcpy(p->driver, "g_ether", sizeof(p->driver));
+	strlcpy(p->version, UETH__VERSION, sizeof(p->version));
+	strlcpy(p->fw_version, dev->gadget->name, sizeof(p->fw_version));
+	strlcpy(p->bus_info, dev_name(&dev->gadget->dev), sizeof(p->bus_info));
 }
 
 /* REVISIT can also support:
@@ -240,9 +242,13 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	size += out->maxpacket - 1;
 	size -= size % out->maxpacket;
 
+	if (dev->ul_max_pkts_per_xfer)
+		size *= dev->ul_max_pkts_per_xfer;
+
 	if (dev->port_usb->is_fixed)
 		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
 
+	DBG(dev, "%s: size: %d\n", __func__, size);
 	skb = alloc_skb(size + NET_IP_ALIGN, gfp_flags);
 	if (skb == NULL) {
 		DBG(dev, "no rx skb\n");
@@ -545,11 +551,14 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 				switch (retval) {
 				default:
 					DBG(dev, "tx queue err %d\n", retval);
+<<<<<<< HEAD
 					new_req->length = 0;
 					spin_lock(&dev->req_lock);
 					list_add_tail(&new_req->list,
 							&dev->tx_reqs);
 					spin_unlock(&dev->req_lock);
+=======
+>>>>>>> common/android-3.10.y
 					break;
 				case 0:
 					spin_lock(&dev->req_lock);
@@ -559,6 +568,7 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 				}
 			} else {
 				spin_lock(&dev->req_lock);
+<<<<<<< HEAD
 				/*
 				 * Put the idle request at the back of the
 				 * queue. The xmit function will put the
@@ -566,6 +576,9 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 				 * queue.
 				 */
 				list_add_tail(&new_req->list, &dev->tx_reqs);
+=======
+				list_add(&new_req->list, &dev->tx_reqs);
+>>>>>>> common/android-3.10.y
 				spin_unlock(&dev->req_lock);
 			}
 		} else {
@@ -585,12 +598,20 @@ static inline int is_promisc(u16 cdc_filter)
 	return cdc_filter & USB_CDC_PACKET_TYPE_PROMISCUOUS;
 }
 
+<<<<<<< HEAD
 static int alloc_tx_buffer(struct eth_dev *dev)
+=======
+static void alloc_tx_buffer(struct eth_dev *dev)
+>>>>>>> common/android-3.10.y
 {
 	struct list_head	*act;
 	struct usb_request	*req;
 
+<<<<<<< HEAD
 	dev->tx_req_bufsize = (TX_SKB_HOLD_THRESHOLD *
+=======
+	dev->tx_req_bufsize = (dev->dl_max_pkts_per_xfer *
+>>>>>>> common/android-3.10.y
 				(dev->net->mtu
 				+ sizeof(struct ethhdr)
 				/* size of rndis_packet_msg_type */
@@ -602,6 +623,7 @@ static int alloc_tx_buffer(struct eth_dev *dev)
 		if (!req->buf)
 			req->buf = kmalloc(dev->tx_req_bufsize,
 						GFP_ATOMIC);
+<<<<<<< HEAD
 			if (!req->buf)
 				goto free_buf;
 	}
@@ -615,6 +637,9 @@ free_buf:
 		kfree(req->buf);
 	}
 	return -ENOMEM;
+=======
+	}
+>>>>>>> common/android-3.10.y
 }
 
 static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
@@ -646,11 +671,16 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Allocate memory for tx_reqs to support multi packet transfer */
+<<<<<<< HEAD
 	if (multi_pkt_xfer && !dev->tx_req_bufsize) {
 		retval = alloc_tx_buffer(dev);
 		if (retval < 0)
 			return -ENOMEM;
 	}
+=======
+	if (dev->port_usb->multi_pkt_xfer && !dev->tx_req_bufsize)
+		alloc_tx_buffer(dev);
+>>>>>>> common/android-3.10.y
 
 	/* apply outgoing CDC or RNDIS filters */
 	if (!is_promisc(cdc_filter)) {
@@ -711,6 +741,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	spin_lock_irqsave(&dev->req_lock, flags);
 	dev->tx_skb_hold_count++;
 	spin_unlock_irqrestore(&dev->req_lock, flags);
+<<<<<<< HEAD
 
 	if (multi_pkt_xfer) {
 		memcpy(req->buf + req->length, skb->data, skb->len);
@@ -727,6 +758,24 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 			}
 		}
 
+=======
+
+	if (dev->port_usb->multi_pkt_xfer) {
+		memcpy(req->buf + req->length, skb->data, skb->len);
+		req->length = req->length + skb->len;
+		length = req->length;
+		dev_kfree_skb_any(skb);
+
+		spin_lock_irqsave(&dev->req_lock, flags);
+		if (dev->tx_skb_hold_count < dev->dl_max_pkts_per_xfer) {
+			if (dev->no_tx_req_used > TX_REQ_THRESHOLD) {
+				list_add(&req->list, &dev->tx_reqs);
+				spin_unlock_irqrestore(&dev->req_lock, flags);
+				goto success;
+			}
+		}
+
+>>>>>>> common/android-3.10.y
 		dev->no_tx_req_used++;
 		spin_unlock_irqrestore(&dev->req_lock, flags);
 
@@ -784,10 +833,15 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	if (retval) {
+<<<<<<< HEAD
 		if (!multi_pkt_xfer)
 			dev_kfree_skb_any(skb);
 		else
 			req->length = 0;
+=======
+		if (!dev->port_usb->multi_pkt_xfer)
+			dev_kfree_skb_any(skb);
+>>>>>>> common/android-3.10.y
 drop:
 		dev->net->stats.tx_dropped++;
 		spin_lock_irqsave(&dev->req_lock, flags);
@@ -920,7 +974,7 @@ static int get_ether_addr(const char *str, u8 *dev_addr)
 		if (is_valid_ether_addr(dev_addr))
 			return 0;
 	}
-	random_ether_addr(dev_addr);
+	eth_random_addr(dev_addr);
 	return 1;
 }
 
@@ -934,8 +988,11 @@ static int get_host_ether_addr(u8 *str, u8 *dev_addr)
 	memcpy(str, dev_addr, ETH_ALEN);
 	return 1;
 }
+<<<<<<< HEAD
 
 static struct eth_dev *the_dev;
+=======
+>>>>>>> common/android-3.10.y
 
 static const struct net_device_ops eth_netdev_ops = {
 	.ndo_open		= eth_open,
@@ -951,10 +1008,11 @@ static struct device_type gadget_type = {
 };
 
 /**
- * gether_setup - initialize one ethernet-over-usb link
+ * gether_setup_name - initialize one ethernet-over-usb link
  * @g: gadget to associated with these links
  * @ethaddr: NULL, or a buffer in which the ethernet address of the
  *	host side of the link is recorded
+ * @netname: name for network device (for example, "usb")
  * Context: may sleep
  *
  * This sets up the single network link that may be exported by a
@@ -963,7 +1021,8 @@ static struct device_type gadget_type = {
  *
  * Returns negative errno, or zero on success
  */
-int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN])
+struct eth_dev *gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
+		const char *netname)
 {
 	return gether_setup_name(g, ethaddr, "usb");
 }
@@ -989,12 +1048,9 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 	struct net_device	*net;
 	int			status;
 
-	if (the_dev)
-		return -EBUSY;
-
 	net = alloc_etherdev(sizeof *dev);
 	if (!net)
-		return -ENOMEM;
+		return ERR_PTR(-ENOMEM);
 
 	dev = netdev_priv(net);
 	spin_lock_init(&dev->lock);
@@ -1034,12 +1090,16 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 	if (status < 0) {
 		dev_dbg(&g->dev, "register_netdev failed, %d\n", status);
 		free_netdev(net);
+		dev = ERR_PTR(status);
 	} else {
 		INFO(dev, "MAC %pM\n", net->dev_addr);
 		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
 
+<<<<<<< HEAD
 		the_dev = dev;
 
+=======
+>>>>>>> common/android-3.10.y
 		/* two kinds of host-initiated state changes:
 		 *  - iff DATA transfer is active, carrier is "on"
 		 *  - tx queueing enabled if open *and* carrier is "on"
@@ -1047,7 +1107,7 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 		netif_carrier_off(net);
 	}
 
-	return status;
+	return dev;
 }
 
 /**
@@ -1056,18 +1116,15 @@ int gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
  *
  * This is called to free all resources allocated by @gether_setup().
  */
-void gether_cleanup(void)
+void gether_cleanup(struct eth_dev *dev)
 {
-	if (!the_dev)
+	if (!dev)
 		return;
 
-	unregister_netdev(the_dev->net);
-	flush_work_sync(&the_dev->work);
-	free_netdev(the_dev->net);
-
-	the_dev = NULL;
+	unregister_netdev(dev->net);
+	flush_work(&dev->work);
+	free_netdev(dev->net);
 }
-
 
 /**
  * gether_connect - notify network layer that USB link is active
@@ -1087,7 +1144,7 @@ void gether_cleanup(void)
  */
 struct net_device *gether_connect(struct gether *link)
 {
-	struct eth_dev		*dev = the_dev;
+	struct eth_dev		*dev = link->ioport;
 	int			result = 0;
 
 	if (!dev)
@@ -1119,13 +1176,14 @@ struct net_device *gether_connect(struct gether *link)
 		dev->header_len = link->header_len;
 		dev->unwrap = link->unwrap;
 		dev->wrap = link->wrap;
+		dev->ul_max_pkts_per_xfer = link->ul_max_pkts_per_xfer;
+		dev->dl_max_pkts_per_xfer = link->dl_max_pkts_per_xfer;
 
 		spin_lock(&dev->lock);
 		dev->tx_skb_hold_count = 0;
 		dev->no_tx_req_used = 0;
 		dev->tx_req_bufsize = 0;
 		dev->port_usb = link;
-		link->ioport = dev;
 		if (netif_running(dev->net)) {
 			if (link->open)
 				link->open(link);
@@ -1227,7 +1285,6 @@ void gether_disconnect(struct gether *link)
 
 	spin_lock(&dev->lock);
 	dev->port_usb = NULL;
-	link->ioport = NULL;
 	spin_unlock(&dev->lock);
 }
 

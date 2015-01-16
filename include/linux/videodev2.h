@@ -1,7 +1,7 @@
 /*
  *  Video for Linux Two header file
  *
- *  Copyright (C) 1999-2007 the contributors
+ *  Copyright (C) 1999-2012 the contributors
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@
 #ifndef __LINUX_VIDEODEV2_H
 #define __LINUX_VIDEODEV2_H
 
+<<<<<<< HEAD
 #ifdef __KERNEL__
 #include <linux/time.h>     
 #else
@@ -1837,5 +1838,9 @@ struct v4l2_create_buffers {
 
 
 #define BASE_VIDIOC_PRIVATE	192		
+=======
+#include <linux/time.h>     /* need struct timeval */
+#include <uapi/linux/videodev2.h>
+>>>>>>> common/android-3.10.y
 
 #endif 

@@ -21,14 +21,21 @@
    SOFTWARE IS DISCLAIMED.
 */
 
+<<<<<<< HEAD
 #include <linux/interrupt.h>
 #include <linux/module.h>
+=======
+#include <linux/crypto.h>
+#include <linux/scatterlist.h>
+#include <crypto/b128ops.h>
+>>>>>>> common/android-3.10.y
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 #include <net/bluetooth/l2cap.h>
 #include <net/bluetooth/mgmt.h>
 #include <net/bluetooth/smp.h>
+<<<<<<< HEAD
 #include <linux/crypto.h>
 #include <crypto/b128ops.h>
 #include <asm/unaligned.h>
@@ -39,6 +46,8 @@
 #define SMP_MAX_CONN_INTERVAL	56	/* 70ms (56 * 1.25ms) */
 #define SMP_MAX_CONN_LATENCY	0	/* 0ms (0 * 1.25ms) */
 #define SMP_SUPERVISION_TIMEOUT	500	/* 5 seconds (500 * 10ms) */
+=======
+>>>>>>> common/android-3.10.y
 
 #ifndef FALSE
 #define FALSE 0
@@ -46,6 +55,8 @@
 #endif
 
 static int smp_distribute_keys(struct l2cap_conn *conn, __u8 force);
+
+#define AUTH_REQ_MASK   0x07
 
 static inline void swap128(u8 src[16], u8 dst[16])
 {
@@ -180,7 +191,7 @@ static struct sk_buff *smp_build_cmd(struct l2cap_conn *conn, u8 code,
 
 	lh = (struct l2cap_hdr *) skb_put(skb, L2CAP_HDR_SIZE);
 	lh->len = cpu_to_le16(sizeof(code) + dlen);
-	lh->cid = cpu_to_le16(L2CAP_CID_SMP);
+	lh->cid = __constant_cpu_to_le16(L2CAP_CID_SMP);
 
 	memcpy(skb_put(skb, sizeof(code)), &code, sizeof(code));
 
@@ -244,11 +255,15 @@ static void build_pairing_cmd(struct l2cap_conn *conn,
 		req->max_key_size = SMP_MAX_ENC_KEY_SIZE;
 		req->init_key_dist = all_keys;
 		req->resp_key_dist = dist_keys;
+<<<<<<< HEAD
 		req->auth_req = authreq;
 		BT_DBG("SMP_CMD_PAIRING_REQ %d %d %d %d %2.2x %2.2x",
 				req->io_capability, req->oob_flag,
 				req->auth_req, req->max_key_size,
 				req->init_key_dist, req->resp_key_dist);
+=======
+		req->auth_req = (authreq & AUTH_REQ_MASK);
+>>>>>>> common/android-3.10.y
 		return;
 	}
 
@@ -263,11 +278,15 @@ static void build_pairing_cmd(struct l2cap_conn *conn,
 	rsp->max_key_size = SMP_MAX_ENC_KEY_SIZE;
 	rsp->init_key_dist = req->init_key_dist & all_keys;
 	rsp->resp_key_dist = req->resp_key_dist & dist_keys;
+<<<<<<< HEAD
 	rsp->auth_req = authreq;
 	BT_DBG("SMP_CMD_PAIRING_RSP %d %d %d %d %2.2x %2.2x",
 			req->io_capability, req->oob_flag, req->auth_req,
 			req->max_key_size, req->init_key_dist,
 			req->resp_key_dist);
+=======
+	rsp->auth_req = (authreq & AUTH_REQ_MASK);
+>>>>>>> common/android-3.10.y
 }
 
 static u8 check_enc_key_size(struct l2cap_conn *conn, __u8 max_key_size)
@@ -283,6 +302,7 @@ static u8 check_enc_key_size(struct l2cap_conn *conn, __u8 max_key_size)
 	return 0;
 }
 
+<<<<<<< HEAD
 #define JUST_WORKS	SMP_JUST_WORKS
 #define REQ_PASSKEY	SMP_REQ_PASSKEY
 #define CFM_PASSKEY	SMP_CFM_PASSKEY
@@ -294,6 +314,39 @@ static const u8	gen_method[5][5] = {
 	{CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, CFM_PASSKEY},
 	{JUST_WORKS,  JUST_CFM,    JUST_WORKS,  JUST_WORKS, JUST_CFM},
 	{CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, OVERLAP}
+=======
+static void smp_failure(struct l2cap_conn *conn, u8 reason, u8 send)
+{
+	struct hci_conn *hcon = conn->hcon;
+
+	if (send)
+		smp_send_cmd(conn, SMP_CMD_PAIRING_FAIL, sizeof(reason),
+								&reason);
+
+	clear_bit(HCI_CONN_ENCRYPT_PEND, &conn->hcon->flags);
+	mgmt_auth_failed(conn->hcon->hdev, conn->dst, hcon->type,
+			 hcon->dst_type, HCI_ERROR_AUTH_FAILURE);
+
+	cancel_delayed_work_sync(&conn->security_timer);
+
+	if (test_and_clear_bit(HCI_CONN_LE_SMP_PEND, &conn->hcon->flags))
+		smp_chan_destroy(conn);
+}
+
+#define JUST_WORKS	0x00
+#define JUST_CFM	0x01
+#define REQ_PASSKEY	0x02
+#define CFM_PASSKEY	0x03
+#define REQ_OOB		0x04
+#define OVERLAP		0xFF
+
+static const u8 gen_method[5][5] = {
+	{ JUST_WORKS,  JUST_CFM,    REQ_PASSKEY, JUST_WORKS, REQ_PASSKEY },
+	{ JUST_WORKS,  JUST_CFM,    REQ_PASSKEY, JUST_WORKS, REQ_PASSKEY },
+	{ CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, CFM_PASSKEY },
+	{ JUST_WORKS,  JUST_CFM,    JUST_WORKS,  JUST_WORKS, JUST_CFM    },
+	{ CFM_PASSKEY, CFM_PASSKEY, REQ_PASSKEY, JUST_WORKS, OVERLAP     },
+>>>>>>> common/android-3.10.y
 };
 
 static int tk_request(struct l2cap_conn *conn, u8 remote_oob, u8 auth,
@@ -410,7 +463,35 @@ static int send_pairing_confirm(struct l2cap_conn *conn)
 
 	smp_send_cmd(conn, SMP_CMD_PAIRING_CONFIRM, sizeof(cp), &cp);
 
+<<<<<<< HEAD
 	return 0;
+=======
+	INIT_WORK(&smp->confirm, confirm_work);
+	INIT_WORK(&smp->random, random_work);
+
+	smp->conn = conn;
+	conn->smp_chan = smp;
+	conn->hcon->smp_conn = conn;
+
+	hci_conn_hold(conn->hcon);
+
+	return smp;
+}
+
+void smp_chan_destroy(struct l2cap_conn *conn)
+{
+	struct smp_chan *smp = conn->smp_chan;
+
+	BUG_ON(!smp);
+
+	if (smp->tfm)
+		crypto_free_blkcipher(smp->tfm);
+
+	kfree(smp);
+	conn->smp_chan = NULL;
+	conn->hcon->smp_conn = NULL;
+	hci_conn_drop(conn->hcon);
+>>>>>>> common/android-3.10.y
 }
 
 int le_user_confirm_reply(struct hci_conn *hcon, u16 mgmt_op, void *cp)
@@ -472,8 +553,24 @@ static u8 smp_cmd_pairing_req(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	BT_DBG("conn %p", conn);
 
+<<<<<<< HEAD
 	hcon->preq[0] = SMP_CMD_PAIRING_REQ;
 	memcpy(&hcon->preq[1], req, sizeof(*req));
+=======
+	if (conn->hcon->link_mode & HCI_LM_MASTER)
+		return SMP_CMD_NOTSUPP;
+
+	if (!test_and_set_bit(HCI_CONN_LE_SMP_PEND, &conn->hcon->flags))
+		smp = smp_chan_create(conn);
+	else
+		smp = conn->smp_chan;
+
+	if (!smp)
+		return SMP_UNSPECIFIED;
+
+	smp->preq[0] = SMP_CMD_PAIRING_REQ;
+	memcpy(&smp->preq[1], req, sizeof(*req));
+>>>>>>> common/android-3.10.y
 	skb_pull(skb, sizeof(*req));
 
 	if (req->oob_flag && hcon->oob) {
@@ -541,8 +638,12 @@ static u8 smp_cmd_pairing_rsp(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	auth |= (req->auth_req | rsp->auth_req) & SMP_AUTH_MITM;
 
+<<<<<<< HEAD
 	ret = tk_request(conn, req->oob_flag, auth, rsp->io_capability,
 							req->io_capability);
+=======
+	ret = tk_request(conn, 0, auth, req->io_capability, rsp->io_capability);
+>>>>>>> common/android-3.10.y
 	if (ret)
 		return SMP_UNSPECIFIED;
 
@@ -657,7 +758,11 @@ static u8 smp_cmd_pairing_random(struct l2cap_conn *conn, struct sk_buff *skb)
 	return 0;
 }
 
+<<<<<<< HEAD
 static int smp_encrypt_link(struct hci_conn *hcon, struct link_key *key)
+=======
+static u8 smp_ltk_encrypt(struct l2cap_conn *conn, u8 sec_level)
+>>>>>>> common/android-3.10.y
 {
 	struct key_master_id *master;
 	u8 sec_level;
@@ -682,6 +787,14 @@ static int smp_encrypt_link(struct hci_conn *hcon, struct link_key *key)
 	if (sec_level > hcon->sec_level)
 		hcon->pending_sec_level = sec_level;
 
+<<<<<<< HEAD
+=======
+	if (sec_level > BT_SECURITY_MEDIUM && !key->authenticated)
+		return 0;
+
+	if (test_and_set_bit(HCI_CONN_ENCRYPT_PEND, &hcon->flags))
+		return 1;
+>>>>>>> common/android-3.10.y
 
 	if (!(hcon->link_mode & HCI_LM_ENCRYPT))
 		hci_conn_hold(hcon);
@@ -700,7 +813,13 @@ static u8 smp_cmd_security_req(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	BT_DBG("conn %p", conn);
 
+<<<<<<< HEAD
 	if (test_bit(HCI_CONN_ENCRYPT_PEND, &hcon->pend))
+=======
+	hcon->pending_sec_level = authreq_to_seclevel(rp->auth_req);
+
+	if (smp_ltk_encrypt(conn, hcon->pending_sec_level))
+>>>>>>> common/android-3.10.y
 		return 0;
 
 	key = hci_find_link_key_type(hcon->hdev, conn->dst, KEY_TYPE_LTK);
@@ -740,15 +859,24 @@ invalid_key:
 	return 0;
 }
 
-int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
+int smp_conn_security(struct hci_conn *hcon, __u8 sec_level)
 {
+<<<<<<< HEAD
 	struct hci_conn *hcon = conn->hcon;
+=======
+	struct l2cap_conn *conn = hcon->l2cap_data;
+	struct smp_chan *smp = conn->smp_chan;
+>>>>>>> common/android-3.10.y
 	__u8 authreq;
 
 	BT_DBG("conn %p hcon %p %d req: %d",
 			conn, hcon, hcon->sec_level, sec_level);
 
+<<<<<<< HEAD
 	if (IS_ERR(hcon->hdev->tfm))
+=======
+	if (!test_bit(HCI_LE_ENABLED, &hcon->hdev->dev_flags))
+>>>>>>> common/android-3.10.y
 		return 1;
 
 	if (test_bit(HCI_CONN_ENCRYPT_PEND, &hcon->pend))
@@ -761,7 +889,13 @@ int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
 	if (hcon->sec_level >= sec_level)
 		return 1;
 
+<<<<<<< HEAD
 	authreq = seclevel_to_authreq(sec_level);
+=======
+	if (hcon->link_mode & HCI_LM_MASTER)
+		if (smp_ltk_encrypt(conn, sec_level))
+			goto done;
+>>>>>>> common/android-3.10.y
 
 	hcon->smp_conn = conn;
 	hcon->pending_sec_level = sec_level;
@@ -868,8 +1002,13 @@ int smp_sig_channel(struct l2cap_conn *conn, struct sk_buff *skb)
 	__u8 reason;
 	int err = 0;
 
+<<<<<<< HEAD
 	if (IS_ERR(hcon->hdev->tfm)) {
 		err = PTR_ERR(hcon->hdev->tfm);
+=======
+	if (!test_bit(HCI_LE_ENABLED, &conn->hcon->hdev->dev_flags)) {
+		err = -ENOTSUPP;
+>>>>>>> common/android-3.10.y
 		reason = SMP_PAIRING_NOTSUPP;
 		BT_ERR("SMP_PAIRING_NOTSUPP %p", hcon->hdev->tfm);
 		goto done;
@@ -877,6 +1016,19 @@ int smp_sig_channel(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	hcon->smp_conn = conn;
 	skb_pull(skb, sizeof(code));
+
+	/*
+	 * The SMP context must be initialized for all other PDUs except
+	 * pairing and security requests. If we get any other PDU when
+	 * not initialized simply disconnect (done if this function
+	 * returns an error).
+	 */
+	if (code != SMP_CMD_PAIRING_REQ && code != SMP_CMD_SECURITY_REQ &&
+	    !conn->smp_chan) {
+		BT_ERR("Unexpected SMP command 0x%02x. Disconnecting.", code);
+		kfree_skb(skb);
+		return -ENOTSUPP;
+	}
 
 	switch (code) {
 	case SMP_CMD_PAIRING_REQ:
@@ -991,7 +1143,7 @@ static int smp_distribute_keys(struct l2cap_conn *conn, __u8 force)
 				hcon->smp_key_size, hcon->auth, ediv,
 				ident.rand, enc.ltk);
 
-		ident.ediv = cpu_to_le16(ediv);
+		ident.ediv = ediv;
 
 		smp_send_cmd(conn, SMP_CMD_MASTER_IDENT, sizeof(ident), &ident);
 

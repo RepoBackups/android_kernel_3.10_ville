@@ -1150,7 +1150,11 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	struct ecryptfs_message *msg = NULL;
 	char *auth_tok_sig;
 	char *payload = NULL;
+<<<<<<< HEAD
 	size_t payload_len;
+=======
+	size_t payload_len = 0;
+>>>>>>> common/android-3.10.y
 	int rc;
 
 	rc = ecryptfs_get_auth_tok_sig(&auth_tok_sig, auth_tok);
@@ -1168,7 +1172,7 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	rc = ecryptfs_send_message(payload, payload_len, &msg_ctx);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Error sending message to "
-				"ecryptfsd\n");
+				"ecryptfsd: %d\n", rc);
 		goto out;
 	}
 	rc = ecryptfs_wait_for_response(msg_ctx, &msg);
@@ -1202,8 +1206,12 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 				  crypt_stat->key_size);
 	}
 out:
+<<<<<<< HEAD
 	if (msg)
 		kfree(msg);
+=======
+	kfree(msg);
+>>>>>>> common/android-3.10.y
 	kfree(payload);
 	return rc;
 }
@@ -1990,7 +1998,7 @@ pki_encrypt_session_key(struct key *auth_tok_key,
 	rc = ecryptfs_send_message(payload, payload_len, &msg_ctx);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Error sending message to "
-				"ecryptfsd\n");
+				"ecryptfsd: %d\n", rc);
 		goto out;
 	}
 	rc = ecryptfs_wait_for_response(msg_ctx, &msg);

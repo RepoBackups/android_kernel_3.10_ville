@@ -49,6 +49,8 @@ static struct snd_pcm *snd_pcm_get(struct snd_card *card, int device)
 	struct snd_pcm *pcm;
 
 	list_for_each_entry(pcm, &snd_pcm_devices, list) {
+		if (pcm->internal)
+			continue;
 		if (pcm->card == card && pcm->device == device)
 			return pcm;
 	}
@@ -60,6 +62,8 @@ static int snd_pcm_next(struct snd_card *card, int device)
 	struct snd_pcm *pcm;
 
 	list_for_each_entry(pcm, &snd_pcm_devices, list) {
+		if (pcm->internal)
+			continue;
 		if (pcm->card == card && pcm->device > device)
 			return pcm->device;
 		else if (pcm->card->number > card->number)
@@ -209,6 +213,8 @@ static char *snd_pcm_format_names[] = {
 	FORMAT(G723_24_1B),
 	FORMAT(G723_40),
 	FORMAT(G723_40_1B),
+	FORMAT(DSD_U8),
+	FORMAT(DSD_U16_LE),
 };
 
 const char *snd_pcm_format_name(snd_pcm_format_t format)
@@ -637,7 +643,7 @@ static inline int snd_pcm_substream_proc_done(struct snd_pcm_substream *substrea
  * calling this, i.e. zero must be given to the argument of
  * snd_pcm_new().
  *
- * Returns zero if successful, or a negative error code on failure.
+ * Return: Zero if successful, or a negative error code on failure.
  */
 int snd_pcm_new_stream(struct snd_pcm *pcm, int stream, int substream_count)
 {
@@ -758,10 +764,31 @@ int snd_pcm_new(struct snd_card *card, const char *id, int device,
 	return 0;
 }
 
+<<<<<<< HEAD
 EXPORT_SYMBOL(snd_pcm_new);
 
 static int snd_pcm_new_stream_soc_be(struct snd_pcm *pcm, int stream,
 	int substream_count)
+=======
+/**
+ * snd_pcm_new - create a new PCM instance
+ * @card: the card instance
+ * @id: the id string
+ * @device: the device index (zero based)
+ * @playback_count: the number of substreams for playback
+ * @capture_count: the number of substreams for capture
+ * @rpcm: the pointer to store the new pcm instance
+ *
+ * Creates a new PCM instance.
+ *
+ * The pcm operators have to be set afterwards to the new instance
+ * via snd_pcm_set_ops().
+ *
+ * Return: Zero if successful, or a negative error code on failure.
+ */
+int snd_pcm_new(struct snd_card *card, const char *id, int device,
+		int playback_count, int capture_count, struct snd_pcm **rpcm)
+>>>>>>> common/android-3.10.y
 {
 	int idx;
 	struct snd_pcm_str *pstr = &pcm->streams[stream];
@@ -817,7 +844,7 @@ static int snd_pcm_new_stream_soc_be(struct snd_pcm *pcm, int stream,
  * The pcm operators have to be set afterwards to the new instance
  * via snd_pcm_set_ops().
  *
- * Returns zero if successful, or a negative error code on failure.
+ * Return: Zero if successful, or a negative error code on failure.
  */
 int snd_pcm_new_soc_be(struct snd_card *card, const char *id, int device,
 	int playback_count, int capture_count,
@@ -1048,8 +1075,7 @@ void snd_pcm_detach_substream(struct snd_pcm_substream *substream)
 		       PAGE_ALIGN(sizeof(struct snd_pcm_mmap_control)));
 	kfree(runtime->hw_constraints.rules);
 #ifdef CONFIG_SND_PCM_XRUN_DEBUG
-	if (runtime->hwptr_log)
-		kfree(runtime->hwptr_log);
+	kfree(runtime->hwptr_log);
 #endif
 	kfree(runtime);
 	substream->runtime = NULL;
@@ -1203,9 +1229,15 @@ static int snd_pcm_dev_disconnect(struct snd_device *device)
 			break;
 		}
 		snd_unregister_device(devtype, pcm->card, pcm->device);
+<<<<<<< HEAD
 		if (pcm->streams[cidx].vol_kctl) {
 			snd_ctl_remove(pcm->card, pcm->streams[cidx].vol_kctl);
 			pcm->streams[cidx].vol_kctl = NULL;
+=======
+		if (pcm->streams[cidx].chmap_kctl) {
+			snd_ctl_remove(pcm->card, pcm->streams[cidx].chmap_kctl);
+			pcm->streams[cidx].chmap_kctl = NULL;
+>>>>>>> common/android-3.10.y
 		}
 	}
 	mutex_unlock(&pcm->open_mutex);

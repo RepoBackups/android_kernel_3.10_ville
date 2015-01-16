@@ -24,12 +24,18 @@
 
 /* Bluetooth kernel library. */
 
+<<<<<<< HEAD
 #include <linux/module.h>
 
 #include <linux/kernel.h>
 #include <linux/stddef.h>
 #include <linux/string.h>
 #include <asm/errno.h>
+=======
+#define pr_fmt(fmt) "Bluetooth: " fmt
+
+#include <linux/export.h>
+>>>>>>> common/android-3.10.y
 
 #include <net/bluetooth/bluetooth.h>
 
@@ -43,20 +49,6 @@ void baswap(bdaddr_t *dst, bdaddr_t *src)
 		d[i] = s[5 - i];
 }
 EXPORT_SYMBOL(baswap);
-
-char *batostr(bdaddr_t *ba)
-{
-	static char str[2][18];
-	static int i = 1;
-
-	i ^= 1;
-	sprintf(str[i], "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
-		ba->b[5], ba->b[4], ba->b[3],
-		ba->b[2], ba->b[1], ba->b[0]);
-
-	return str[i];
-}
-EXPORT_SYMBOL(batostr);
 
 /* Bluetooth error codes to Unix errno mapping */
 int bt_err(__u16 code)

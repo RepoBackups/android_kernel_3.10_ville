@@ -43,6 +43,7 @@
 #define MSM_QGIC_CPU_PHYS	0x02081000
 #define MSM_QGIC_CPU_SIZE	SZ_4K
 
+<<<<<<< HEAD
 #define MSM_ACC_BASE		IOMEM(0xFA002000)
 #define MSM_ACC_PHYS		0x02001000
 #define MSM_ACC_SIZE		SZ_4K
@@ -125,17 +126,25 @@
 #define MSM_HDMI_BASE		IOMEM(0xFA800000)
 #define MSM_HDMI_PHYS		0x04A00000
 #define MSM_HDMI_SIZE		SZ_4K
+=======
+#define MSM_TLMM_BASE		IOMEM(0xF0004000)
+#define MSM_TLMM_PHYS		0x00800000
+#define MSM_TLMM_SIZE		SZ_16K
+
+#define MSM8X60_TMR_PHYS	0x02000000
+#define MSM8X60_TMR_SIZE	SZ_4K
+>>>>>>> common/android-3.10.y
 
 /* Needed to keep the unified iomap happy */
 #define MSM_MPM2_PSHOLD_BASE	MSM_TLMM_BASE
 
 #ifdef CONFIG_DEBUG_MSM8660_UART
+<<<<<<< HEAD
 #define MSM_DEBUG_UART_BASE	0xFBC40000
+=======
+#define MSM_DEBUG_UART_BASE	0xF0040000
+>>>>>>> common/android-3.10.y
 #define MSM_DEBUG_UART_PHYS	0x19C40000
-#endif
-
-#ifndef __ASSEMBLY__
-extern void msm_map_msm8x60_io(void);
 #endif
 
 #endif

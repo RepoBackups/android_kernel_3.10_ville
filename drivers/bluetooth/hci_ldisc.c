@@ -168,6 +168,38 @@ restart:
 		goto restart;
 
 	clear_bit(HCI_UART_SENDING, &hu->tx_state);
+<<<<<<< HEAD
+=======
+}
+
+static void hci_uart_init_work(struct work_struct *work)
+{
+	struct hci_uart *hu = container_of(work, struct hci_uart, init_ready);
+	int err;
+
+	if (!test_and_clear_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+		return;
+
+	err = hci_register_dev(hu->hdev);
+	if (err < 0) {
+		BT_ERR("Can't register HCI device");
+		hci_free_dev(hu->hdev);
+		hu->hdev = NULL;
+		hu->proto->close(hu);
+	}
+
+	set_bit(HCI_UART_REGISTERED, &hu->flags);
+}
+
+int hci_uart_init_ready(struct hci_uart *hu)
+{
+	if (!test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+		return -EALREADY;
+
+	schedule_work(&hu->init_ready);
+
+	return 0;
+>>>>>>> common/android-3.10.y
 }
 
 /* ------- Interface to HCI layer ------ */
@@ -254,24 +286,19 @@ static void hci_uart_destruct(struct hci_dev *hdev)
 
 /* ------ LDISC part ------ */
 /* hci_uart_tty_open
- * 
+ *
  *     Called when line discipline changed to HCI_UART.
  *
  * Arguments:
  *     tty    pointer to tty info structure
- * Return Value:    
+ * Return Value:
  *     0 if success, otherwise error code
  */
 static int hci_uart_tty_open(struct tty_struct *tty)
 {
-	struct hci_uart *hu = (void *) tty->disc_data;
+	struct hci_uart *hu;
 
 	BT_DBG("tty %p", tty);
-
-	/* FIXME: This btw is bogus, nothing requires the old ldisc to clear
-	   the pointer */
-	if (hu)
-		return -EEXIST;
 
 	/* Error if the tty has no write op instead of leaving an exploitable
 	   hole */
@@ -287,6 +314,10 @@ static int hci_uart_tty_open(struct tty_struct *tty)
 	hu->tty = tty;
 	tty->receive_room = 65536;
 
+<<<<<<< HEAD
+=======
+	INIT_WORK(&hu->init_ready, hci_uart_init_work);
+>>>>>>> common/android-3.10.y
 	INIT_WORK(&hu->write_work, hci_uart_write_work);
 
 	spin_lock_init(&hu->rx_lock);
@@ -313,18 +344,23 @@ static int hci_uart_tty_open(struct tty_struct *tty)
 static void hci_uart_tty_close(struct tty_struct *tty)
 {
 	struct hci_uart *hu = (void *)tty->disc_data;
+	struct hci_dev *hdev;
 
 	BT_DBG("tty %p", tty);
 
 	/* Detach from the tty */
 	tty->disc_data = NULL;
 
-	if (hu) {
-		struct hci_dev *hdev = hu->hdev;
+	if (!hu)
+		return;
 
-		if (hdev)
-			hci_uart_close(hdev);
+	hdev = hu->hdev;
+	if (hdev)
+		hci_uart_close(hdev);
 
+	cancel_work_sync(&hu->write_work);
+
+<<<<<<< HEAD
 		tasklet_kill(&hu->tty_wakeup_task);
 
 		cancel_work_sync(&hu->write_work);
@@ -336,7 +372,18 @@ static void hci_uart_tty_close(struct tty_struct *tty)
 				hci_free_dev(hdev);
 			}
 		}
+=======
+	if (test_and_clear_bit(HCI_UART_PROTO_SET, &hu->flags)) {
+		if (hdev) {
+			if (test_bit(HCI_UART_REGISTERED, &hu->flags))
+				hci_unregister_dev(hdev);
+			hci_free_dev(hdev);
+		}
+		hu->proto->close(hu);
+>>>>>>> common/android-3.10.y
 	}
+
+	kfree(hu);
 }
 
 /* hci_uart_tty_wakeup()
@@ -382,15 +429,15 @@ static void hci_uart_tty_wakeup_action(unsigned long data)
 }
 
 /* hci_uart_tty_receive()
- * 
+ *
  *     Called by tty low level driver when receive data is
  *     available.
- *     
+ *
  * Arguments:  tty          pointer to tty isntance data
  *             data         pointer to received data
  *             flags        pointer to flags for data
  *             count        count of received data in bytes
- *     
+ *
  * Return Value:    None
  */
 static void hci_uart_tty_receive(struct tty_struct *tty, const u8 *data, char *flags, int count)
@@ -405,9 +452,17 @@ static void hci_uart_tty_receive(struct tty_struct *tty, const u8 *data, char *f
 		return;
 
 	spin_lock(&hu->rx_lock);
+<<<<<<< HEAD
 	ret = hu->proto->recv(hu, (void *) data, count);
 	if (ret > 0)
 		hu->hdev->stat.byte_rx += count;
+=======
+	hu->proto->recv(hu, (void *) data, count);
+
+	if (hu->hdev)
+		hu->hdev->stat.byte_rx += count;
+
+>>>>>>> common/android-3.10.y
 	spin_unlock(&hu->rx_lock);
 
 	tty_unthrottle(tty);
@@ -435,22 +490,36 @@ static int hci_uart_register_dev(struct hci_uart *hu)
 	hdev->close = hci_uart_close;
 	hdev->flush = hci_uart_flush;
 	hdev->send  = hci_uart_send_frame;
+<<<<<<< HEAD
 	hdev->destruct = hci_uart_destruct;
 	hdev->parent = hu->tty->dev;
+=======
+	SET_HCIDEV_DEV(hdev, hu->tty->dev);
+>>>>>>> common/android-3.10.y
 
 	hdev->owner = THIS_MODULE;
 
+<<<<<<< HEAD
 	if (!reset)
 		set_bit(HCI_QUIRK_NO_RESET, &hdev->quirks);
+=======
+	if (!test_bit(HCI_UART_RESET_ON_INIT, &hu->hdev_flags))
+		set_bit(HCI_QUIRK_RESET_ON_CLOSE, &hdev->quirks);
+>>>>>>> common/android-3.10.y
 
 	if (test_bit(HCI_UART_RAW_DEVICE, &hu->hdev_flags))
 		set_bit(HCI_QUIRK_RAW_DEVICE, &hdev->quirks);
+
+	if (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+		return 0;
 
 	if (hci_register_dev(hdev) < 0) {
 		BT_ERR("Can't register HCI device");
 		hci_free_dev(hdev);
 		return -ENODEV;
 	}
+
+	set_bit(HCI_UART_REGISTERED, &hu->flags);
 
 	return 0;
 }
@@ -545,7 +614,7 @@ static int hci_uart_tty_ioctl(struct tty_struct *tty, struct file * file,
 	default:
 		err = n_tty_ioctl_helper(tty, file, cmd, arg);
 		break;
-	};
+	}
 
 	return err;
 }
@@ -610,8 +679,13 @@ static int __init hci_uart_init(void)
 #ifdef CONFIG_BT_HCIUART_ATH3K
 	ath_init();
 #endif
+<<<<<<< HEAD
 #ifdef CONFIG_BT_HCIUART_IBS
 	ibs_init();
+=======
+#ifdef CONFIG_BT_HCIUART_3WIRE
+	h5_init();
+>>>>>>> common/android-3.10.y
 #endif
 
 	return 0;
@@ -633,8 +707,13 @@ static void __exit hci_uart_exit(void)
 #ifdef CONFIG_BT_HCIUART_ATH3K
 	ath_deinit();
 #endif
+<<<<<<< HEAD
 #ifdef CONFIG_BT_HCIUART_IBS
 	ibs_deinit();
+=======
+#ifdef CONFIG_BT_HCIUART_3WIRE
+	h5_deinit();
+>>>>>>> common/android-3.10.y
 #endif
 
 	/* Release tty registration of line discipline */

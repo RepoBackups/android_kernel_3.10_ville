@@ -15,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/string.h>
+#include <linux/string_helpers.h>
 #include <linux/sysfs.h>
 #include <linux/ctype.h>
 
@@ -417,7 +418,11 @@ static ssize_t synth_direct_store(struct kobject *kobj,
 		bytes = min_t(size_t, len, 250);
 		strncpy(tmp, ptr, bytes);
 		tmp[bytes] = '\0';
+<<<<<<< HEAD
 		spk_xlate(tmp);
+=======
+		string_unescape_any_inplace(tmp);
+>>>>>>> common/android-3.10.y
 		synth_printf("%s", tmp);
 		ptr += bytes;
 		len -= bytes;
@@ -605,7 +610,12 @@ ssize_t spk_var_store(struct kobject *kobj, struct kobj_attribute *attr,
 	if (param->data == NULL)
 		return 0;
 	ret = 0;
+<<<<<<< HEAD
 	cp = spk_xlate((char *) buf);
+=======
+	cp = (char *)buf;
+	string_unescape_any_inplace(cp);
+>>>>>>> common/android-3.10.y
 
 	spk_lock(flags);
 	switch (param->var_type) {
@@ -617,9 +627,15 @@ ssize_t spk_var_store(struct kobject *kobj, struct kobj_attribute *attr,
 			len = E_INC;
 		else
 			len = E_SET;
+<<<<<<< HEAD
 		speakup_s2i(cp, &value);
 		ret = spk_set_num_var(value, param, len);
 		if (ret == E_RANGE) {
+=======
+		value = simple_strtol(cp, NULL, 10);
+		ret = spk_set_num_var(value, param, len);
+		if (ret == -ERANGE) {
+>>>>>>> common/android-3.10.y
 			var_data = param->data;
 			pr_warn("value for %s out of range, expect %d to %d\n",
 				attr->attr.name,
@@ -637,7 +653,11 @@ ssize_t spk_var_store(struct kobject *kobj, struct kobj_attribute *attr,
 		cp = (char *) buf;
 		cp[len] = '\0';
 		ret = spk_set_string_var(buf, param, len);
+<<<<<<< HEAD
 		if (ret == E_TOOLONG)
+=======
+		if (ret == -E2BIG)
+>>>>>>> common/android-3.10.y
 			pr_warn("value too long for %s\n",
 					attr->attr.name);
 		break;
@@ -654,23 +674,33 @@ ssize_t spk_var_store(struct kobject *kobj, struct kobj_attribute *attr,
 		if (synth && synth->default_pitch) {
 			param = spk_var_header_by_name("pitch");
 			if (param)  {
+<<<<<<< HEAD
 				spk_set_num_var(synth->default_pitch[value], param,
 					E_NEW_DEFAULT);
+=======
+				spk_set_num_var(synth->default_pitch[value],
+						param, E_NEW_DEFAULT);
+>>>>>>> common/android-3.10.y
 				spk_set_num_var(0, param, E_DEFAULT);
 			}
 		}
 		if (synth && synth->default_vol) {
 			param = spk_var_header_by_name("vol");
 			if (param)  {
+<<<<<<< HEAD
 				spk_set_num_var(synth->default_vol[value], param,
 					E_NEW_DEFAULT);
+=======
+				spk_set_num_var(synth->default_vol[value],
+						param, E_NEW_DEFAULT);
+>>>>>>> common/android-3.10.y
 				spk_set_num_var(0, param, E_DEFAULT);
 			}
 		}
 	}
 	spk_unlock(flags);
 
-	if (ret == SET_DEFAULT)
+	if (ret == -ERESTART)
 		pr_info("%s reset to default value\n", attr->attr.name);
 	return count;
 }
